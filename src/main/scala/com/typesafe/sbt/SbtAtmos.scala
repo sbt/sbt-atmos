@@ -4,13 +4,12 @@ import sbt._
 import sbt.Keys._
 import sbt.Project.Initialize
 
-// TODO: sigar libs?
-
 object SbtAtmos extends Plugin {
 
-  case class AtmosConfig(consoleClasspath: Classpath, traceClasspath: Classpath, aspectjWeaver: Option[File])
+  case class AtmosInputs(atmosClasspath: Classpath, consoleClasspath: Classpath, traceClasspath: Classpath, aspectjWeaver: Option[File], atmosConfig: File, consoleConfig: File, traceConfig: File)
 
   val Atmos = config("atmos") hide
+  val AtmosConsole = config("atmos-console") hide
   val AtmosTrace = config("atmos-trace") hide
   val AtmosWeave = config("atmos-weave") hide
 
@@ -18,48 +17,82 @@ object SbtAtmos extends Plugin {
     val atmosVersion = SettingKey[String]("atmos-version")
     val aspectjVersion = SettingKey[String]("aspectj-version")
 
-    val atmosConfig = TaskKey[AtmosConfig]("atmos-config")
+    val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
     val consoleClasspath = TaskKey[Classpath]("console-classpath")
     val traceClasspath = TaskKey[Classpath]("trace-classpath")
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
+
+    val atmosDirectory = SettingKey[File]("atmos-directory")
+    val atmosConfigDirectory = SettingKey[File]("atmos-config-directory")
+    val atmosConfigString = SettingKey[String]("atmos-config-string")
+    val atmosConfig = TaskKey[File]("atmos-config")
+    val consoleConfigString = SettingKey[String]("console-config-string")
+    val consoleConfig = TaskKey[File]("console-config")
+    val traceConfigString = SettingKey[String]("trace-config-string")
+    val traceConfig = TaskKey[File]("trace-config")
+
+    val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
 
     val runWithConsole = InputKey[Unit]("run-with-console")
   }
 
   import AtmosKeys._
 
-  lazy val atmosSettings: Seq[Setting[_]] = baseAtmosSettings
+  lazy val atmosSettings: Seq[Setting[_]] = inConfig(Atmos)(atmosScopedSettings) ++ atmosUnscopedSettings
 
-  def baseAtmosSettings: Seq[Setting[_]] = Seq(
-    atmosVersion in Atmos := "1.2.0-SNAPSHOT",
-    aspectjVersion in Atmos := "1.7.1",
-    ivyConfigurations ++= Seq(Atmos, AtmosTrace, AtmosWeave),
+  def atmosScopedSettings: Seq[Setting[_]] = Seq(
+    atmosVersion := "1.2.0-SNAPSHOT",
+    aspectjVersion := "1.7.1",
+
+    atmosClasspath <<= (classpathTypes, update) map managedClasspath(Atmos),
+    consoleClasspath <<= (classpathTypes, update) map managedClasspath(AtmosConsole),
+    traceClasspath <<= (classpathTypes, update) map managedClasspath(AtmosTrace),
+    aspectjWeaver <<= update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption },
+
+    atmosDirectory <<= target / "atmos",
+    atmosConfigDirectory <<= (atmosDirectory) / "conf",
+    atmosConfigString := defaultAtmosConfig,
+    atmosConfig <<= writeConfig(atmosConfigString, "atmos"),
+    traceConfigString <<= name apply defaultTraceConfig,
+    traceConfig <<= writeConfig(traceConfigString, "trace"),
+    consoleConfigString <<= name apply defaultConsoleConfig,
+    consoleConfig <<= writeConfig(consoleConfigString, "console"),
+
+    atmosInputs <<= (atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
+
+    // hacks to retain scala 2.9.2 jars in console dependencies
+    scalaVersion := "2.9.2",
+    scalaInstance <<= atmosScalaInstance
+  )
+
+  def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
+    ivyConfigurations ++= Seq(Atmos, AtmosConsole, AtmosTrace, AtmosWeave),
+
+    libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
-    consoleClasspath in Atmos <<= (classpathTypes, update) map managedClasspath(Atmos),
-    traceClasspath in Atmos <<= (classpathTypes, update) map managedClasspath(AtmosTrace),
-    aspectjWeaver in Atmos <<= update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption },
-    atmosConfig in Atmos <<= (consoleClasspath in Atmos, traceClasspath in Atmos, aspectjWeaver in Atmos) map AtmosConfig,
+
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in runWithConsole in Compile <<= atmosRunner)).head,
     runWithConsole in Compile <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in runWithConsole in Compile),
 
     // hacks to retain scala 2.9.2 jars in console dependencies
     ivyScala <<= ivyScala { is => is.map(_.copy(overrideScalaVersion = false)) },
-    scalaVersion in Atmos := "2.9.2",
-    scalaInstance in Atmos <<= atmosScalaInstance,
     update <<= transformUpdate
   )
 
-  def consoleDependencies(version: String) = Seq(
-    "com.typesafe.console" % "typesafe-console" % version % Atmos.name,
+  def atmosDependencies(version: String) = Seq(
     "com.typesafe.atmos" % "atmos-query" % version % Atmos.name
+  )
+
+  def consoleDependencies(version: String) = Seq(
+    "com.typesafe.console" % "typesafe-console" % version % AtmosConsole.name
   )
 
   // TODO: choose trace dependencies based on library dependencies and versions
   //       and if trace dependencies are not already specified
   def traceDependencies(version: String) = Seq(
-    "com.typesafe.atmos" % "trace-akka-2.1.0" % version % AtmosTrace.name
+    "com.typesafe.atmos" % "trace-akka-2.1.1" % version % AtmosTrace.name
   )
 
   def weaveDependencies(version: String) = Seq(
@@ -69,30 +102,68 @@ object SbtAtmos extends Plugin {
   def managedClasspath(config: Configuration)(types: Set[String], update: UpdateReport): Classpath =
     Classpaths.managedJars(config, types, update)
 
-  def atmosRunner: Initialize[Task[ScalaRun]] =
-    (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosConfig in Atmos) map {
-      (si, base, options, strategy, javaHomeDir, connectIn, config) =>
-        new AtmosRun(ForkOptions(javaHomeDir, strategy, si.jars, Some(base), options, connectIn), config)
+  def defaultTraceConfig(name: String) = """
+    |atmos {
+    |  trace {
+    |    enabled = true
+    |    node = "%s"
+    |  }
+    |}
+  """.trim.stripMargin.format(name)
+
+  def defaultAtmosConfig = """
+    |atmos {
+    |  mode = local
+    |  trace {
+    |    event-handlers = ["com.typesafe.atmos.trace.store.MemoryTraceEventListener", "com.typesafe.atmos.analytics.analyze.LocalAnalyzerTraceEventListener"]
+    |  }
+    |}
+  """.trim.stripMargin
+
+  def defaultConsoleConfig(name: String) = """
+    |app.name = "%s"
+  """.trim.stripMargin.format(name)
+
+  def writeConfig(configKey: SettingKey[String], name: String): Initialize[Task[File]] =
+    (atmosConfigDirectory in Atmos, configKey) map {
+      (confDir, conf) =>
+        val dir = confDir / name
+        val file = dir / "application.conf"
+        IO.write(file, conf)
+        dir
     }
 
-  // TODO: start and stop atmos
-  // TODO: write atmos configuration file for app
-  class AtmosRun(forkConfig: ForkScalaRun, atmosConfig: AtmosConfig) extends ScalaRun {
+  def atmosRunner: Initialize[Task[ScalaRun]] =
+    (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
+      (si, base, options, strategy, javaHomeDir, connectIn, inputs) =>
+        val javaAgent = inputs.aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
+        val aspectjOptions = Seq("-Dorg.aspectj.tracing.factory=default")
+        val atmosOptions = javaAgent ++ aspectjOptions
+        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), options ++ atmosOptions, connectIn)
+        new AtmosRun(forkConfig, inputs)
+    }
+
+  class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     val forkRun = new ForkRun(forkConfig)
 
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Starting Atmos and Typesafe Console")
-      val atmosOptions = Seq("-classpath", Path.makeString(atmosConfig.consoleClasspath.files), "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query")
+      // TODO: add sigar libs to library path
+      val atmosOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.atmosConfig +: atmosInputs.atmosClasspath.files), "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query")
+      // TODO: output directly to log files
       val strategy = forkConfig.outputStrategy getOrElse LoggedOutput(log)
       val atmosProcess = Fork.java.fork(None, atmosOptions, None, Map.empty[String, String], false, strategy)
+      val consoleOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.consoleConfig +: atmosInputs.consoleClasspath.files), "-Dhttp.port=9000", "play.core.server.NettyServer")
+      val consoleProcess = Fork.java.fork(None, consoleOptions, None, Map.empty[String, String], false, strategy)
+      // TODO: recognise when atmos and console are up and ready
+      Thread.sleep(3000)
       try {
-        val cp = classpath ++ atmosConfig.traceClasspath.files
-        val javaAgentOpts = atmosConfig.aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
-        val opts = javaAgentOpts ++ options
+        val cp = (atmosInputs.traceConfig +: atmosInputs.traceClasspath.files) ++ classpath
         forkRun.run(mainClass, cp, options, log)
       } finally {
         log.info("Stopping Atmos and Typesafe Console")
-        //atmosProcess.destroy()
+        atmosProcess.destroy()
+        consoleProcess.destroy()
       }
     }
   }
@@ -110,11 +181,13 @@ object SbtAtmos extends Plugin {
   def resubstituteScalaJars(report: UpdateReport, scalaInstance: ScalaInstance): UpdateReport = {
     import ScalaArtifacts._
     report.substitute { (configuration, module, artifacts) =>
-      (configuration, module.organization, module.name) match {
-        case (Atmos.name, Organization, LibraryID)  => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
-        case (Atmos.name, Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
-        case _ => artifacts
-      }
+      if (configuration == Atmos.name || configuration == AtmosConsole.name) {
+        (module.organization, module.name) match {
+          case (Organization, LibraryID)  => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
+          case (Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
+          case _ => artifacts
+        }
+      } else artifacts
     }
   }
 }
