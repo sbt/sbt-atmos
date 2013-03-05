@@ -10,6 +10,8 @@ import sbt.Project.Initialize
 object SbtAtmos extends Plugin {
 
   case class AtmosInputs(
+    atmosPort: Int,
+    consolePort: Int,
     atmosClasspath: Classpath,
     consoleClasspath: Classpath,
     traceClasspath: Classpath,
@@ -26,6 +28,9 @@ object SbtAtmos extends Plugin {
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
     val aspectjVersion = SettingKey[String]("aspectj-version")
+
+    val atmosPort = SettingKey[Int]("atmos-port")
+    val consolePort = SettingKey[Int]("console-port")
 
     val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
     val consoleClasspath = TaskKey[Classpath]("console-classpath")
@@ -58,6 +63,9 @@ object SbtAtmos extends Plugin {
     atmosVersion := "1.2.0-SNAPSHOT",
     aspectjVersion := "1.7.2",
 
+    atmosPort := 8667,
+    consolePort := 9900,
+
     atmosClasspath <<= managedClasspath(Atmos),
     consoleClasspath <<= managedClasspath(AtmosConsole),
     traceClasspath <<= managedClasspath(AtmosTrace),
@@ -69,14 +77,14 @@ object SbtAtmos extends Plugin {
     atmosConfigString := defaultAtmosConfig,
     atmosLogbackString <<= defaultLogbackConfig("atmos"),
     atmosConfig <<= writeConfig("atmos", atmosConfigString, atmosLogbackString),
-    consoleConfigString <<= name apply defaultConsoleConfig,
+    consoleConfigString <<= (name, atmosPort) apply defaultConsoleConfig,
     consoleLogbackString <<= defaultLogbackConfig("console"),
     consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
     traceConfigString <<= normalizedName apply defaultTraceConfig,
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    atmosInputs <<= (atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
+    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
 
     // hacks to retain scala 2.9.2 jars in console dependencies
     scalaVersion := "2.9.2",
@@ -150,9 +158,10 @@ object SbtAtmos extends Plugin {
     |}
   """.trim.stripMargin
 
-  def defaultConsoleConfig(name: String): String = """
+  def defaultConsoleConfig(name: String, atmosPort: Int): String = """
     |app.name = "%s"
-  """.trim.stripMargin.format(name)
+    |app.url="http://localhost:%s/monitoring"
+  """.trim.stripMargin.format(name, atmosPort.toString)
 
   def defaultTraceConfig(name: String): String = """
     |atmos {
@@ -206,22 +215,38 @@ object SbtAtmos extends Plugin {
         new AtmosRun(forkConfig, inputs)
     }
 
-  // TODO: make ports configurable, make default console port something other than default play port (9000)
+  // TODO: add sigar libs to library path
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     val forkRun = new ForkRun(forkConfig)
 
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
+      import atmosInputs._
       log.info("Starting Atmos and Typesafe Console")
-      // TODO: add sigar libs to library path
-      val atmosOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.atmosConfig +: atmosInputs.atmosClasspath.files), "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query")
+
       val devNull = CustomOutput(NullOutputStream)
+
+      val atmosOptions = Seq(
+        "-Xms512m", "-Xmx512m",
+        "-classpath", Path.makeString(atmosConfig +: atmosClasspath.files),
+        "-Dquery.http.port=" + atmosPort,
+        "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query"
+      )
       val atmosProcess = Fork.java.fork(forkConfig.javaHome, atmosOptions, None, Map.empty[String, String], false, devNull)
-      val consoleOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.consoleConfig +: atmosInputs.consoleClasspath.files), "-Dhttp.port=9000", "-Dlogger.resource=/logback.xml", "play.core.server.NettyServer")
+
+      val consoleOptions = Seq(
+        "-Xms512m", "-Xmx512m",
+        "-classpath", Path.makeString(consoleConfig +: consoleClasspath.files),
+        "-Dhttp.port=" + consolePort,
+        "-Dlogger.resource=/logback.xml",
+        "play.core.server.NettyServer"
+      )
       val consoleProcess = Fork.java.fork(forkConfig.javaHome, consoleOptions, None, Map.empty[String, String], false, devNull)
+
       // TODO: recognise when atmos and console are up and ready
       Thread.sleep(3000)
+
       try {
-        val cp = (atmosInputs.traceConfig +: atmosInputs.traceClasspath.files) ++ classpath
+        val cp = (traceConfig +: traceClasspath.files) ++ classpath
         forkRun.run(mainClass, cp, options, log)
       } finally {
         log.info("Stopping Atmos and Typesafe Console")
