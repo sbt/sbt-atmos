@@ -47,10 +47,10 @@ object SbtAtmos extends Plugin {
     atmosVersion := "1.2.0-SNAPSHOT",
     aspectjVersion := "1.7.2",
 
-    atmosClasspath <<= (classpathTypes, update) map managedClasspath(Atmos),
-    consoleClasspath <<= (classpathTypes, update) map managedClasspath(AtmosConsole),
-    traceClasspath <<= (classpathTypes, update) map managedClasspath(AtmosTrace),
-    aspectjWeaver <<= update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption },
+    atmosClasspath <<= managedClasspath(Atmos),
+    consoleClasspath <<= managedClasspath(AtmosConsole),
+    traceClasspath <<= managedClasspath(AtmosTrace),
+    aspectjWeaver <<= findAspectjWeaver,
 
     atmosDirectory <<= target / "atmos",
     atmosConfigDirectory <<= (atmosDirectory) / "conf",
@@ -115,8 +115,11 @@ object SbtAtmos extends Plugin {
     "org.aspectj" % "aspectjweaver" % version % AtmosWeave.name
   )
 
-  def managedClasspath(config: Configuration)(types: Set[String], update: UpdateReport): Classpath =
-    Classpaths.managedJars(config, types, update)
+  def managedClasspath(config: Configuration): Initialize[Task[Classpath]] =
+    (classpathTypes, update) map { (types, report) => Classpaths.managedJars(config, types, report) }
+
+  def findAspectjWeaver: Initialize[Task[Option[File]]] =
+    update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
 
   def defaultTraceConfig(name: String) = """
     |atmos {
