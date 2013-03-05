@@ -9,7 +9,14 @@ import sbt.Project.Initialize
 
 object SbtAtmos extends Plugin {
 
-  case class AtmosInputs(atmosClasspath: Classpath, consoleClasspath: Classpath, traceClasspath: Classpath, aspectjWeaver: Option[File], atmosConfig: File, consoleConfig: File, traceConfig: File)
+  case class AtmosInputs(
+    atmosClasspath: Classpath,
+    consoleClasspath: Classpath,
+    traceClasspath: Classpath,
+    aspectjWeaver: Option[File],
+    atmosConfig: File,
+    consoleConfig: File,
+    traceConfig: File)
 
   val Atmos = config("atmos") hide
   val AtmosConsole = config("atmos-console") hide
@@ -27,11 +34,15 @@ object SbtAtmos extends Plugin {
 
     val atmosDirectory = SettingKey[File]("atmos-directory")
     val atmosConfigDirectory = SettingKey[File]("atmos-config-directory")
+    val atmosLogDirectory = SettingKey[File]("atmos-log-directory")
     val atmosConfigString = SettingKey[String]("atmos-config-string")
+    val atmosLogbackString = SettingKey[String]("atmos-logback-string")
     val atmosConfig = TaskKey[File]("atmos-config")
     val consoleConfigString = SettingKey[String]("console-config-string")
+    val consoleLogbackString = SettingKey[String]("console-logback-string")
     val consoleConfig = TaskKey[File]("console-config")
     val traceConfigString = SettingKey[String]("trace-config-string")
+    val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
 
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
@@ -53,13 +64,17 @@ object SbtAtmos extends Plugin {
     aspectjWeaver <<= findAspectjWeaver,
 
     atmosDirectory <<= target / "atmos",
-    atmosConfigDirectory <<= (atmosDirectory) / "conf",
+    atmosConfigDirectory <<= atmosDirectory / "conf",
+    atmosLogDirectory <<= atmosDirectory / "log",
     atmosConfigString := defaultAtmosConfig,
-    atmosConfig <<= writeConfig(atmosConfigString, "atmos"),
-    traceConfigString <<= name apply defaultTraceConfig,
-    traceConfig <<= writeConfig(traceConfigString, "trace"),
+    atmosLogbackString <<= defaultLogbackConfig("atmos"),
+    atmosConfig <<= writeConfig("atmos", atmosConfigString, atmosLogbackString),
     consoleConfigString <<= name apply defaultConsoleConfig,
-    consoleConfig <<= writeConfig(consoleConfigString, "console"),
+    consoleLogbackString <<= defaultLogbackConfig("console"),
+    consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
+    traceConfigString <<= normalizedName apply defaultTraceConfig,
+    traceLogbackString := "",
+    traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
     atmosInputs <<= (atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
 
@@ -121,16 +136,12 @@ object SbtAtmos extends Plugin {
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
     update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
 
-  def defaultTraceConfig(name: String) = """
-    |atmos {
-    |  trace {
-    |    enabled = true
-    |    node = "%s"
-    |  }
+  def defaultAtmosConfig(): String = """
+    |akka {
+    |  loglevel = INFO
+    |  event-handlers = ["akka.event.slf4j.Slf4jEventHandler"]
     |}
-  """.trim.stripMargin.format(name)
-
-  def defaultAtmosConfig = """
+    |
     |atmos {
     |  mode = local
     |  trace {
@@ -139,17 +150,50 @@ object SbtAtmos extends Plugin {
     |}
   """.trim.stripMargin
 
-  def defaultConsoleConfig(name: String) = """
+  def defaultConsoleConfig(name: String): String = """
     |app.name = "%s"
   """.trim.stripMargin.format(name)
 
-  def writeConfig(configKey: SettingKey[String], name: String): Initialize[Task[File]] =
-    (atmosConfigDirectory in Atmos, configKey) map {
-      (confDir, conf) =>
-        val dir = confDir / name
-        val file = dir / "application.conf"
-        IO.write(file, conf)
-        dir
+  def defaultTraceConfig(name: String): String = """
+    |atmos {
+    |  trace {
+    |    enabled = true
+    |    node = "%s"
+    |  }
+    |}
+  """.trim.stripMargin.format(name)
+
+  def defaultLogbackConfig(name: String): Initialize[String] = atmosLogDirectory { dir =>
+    """
+      |<?xml version="1.0" encoding="UTF-8"?>
+      |<configuration scan="false" debug="false">
+      |  <property scope="local" name="logDir" value="%s"/>
+      |  <property scope="local" name="logName" value="%s"/>
+    """.trim.stripMargin.format(dir.getAbsolutePath, name) + """
+      |  <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      |    <File>${logDir}/${logName}.log</File>
+      |    <encoder>
+      |      <pattern>%date{ISO8601} %-5level [%logger{36}] [%X{akkaSource}] [%X{sourceThread}] : %m%n</pattern>
+      |    </encoder>
+      |    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      |      <fileNamePattern>${logDir}/${logName}.log.%d{yyyy-MM-dd-HH}</fileNamePattern>
+      |    </rollingPolicy>
+      |  </appender>
+      |  <root level="INFO">
+      |    <appender-ref ref="file"/>
+      |  </root>
+      |</configuration>
+    """.stripMargin
+  }
+
+  def writeConfig(name: String, configKey: SettingKey[String], logbackKey: SettingKey[String]): Initialize[Task[File]] =
+    (atmosConfigDirectory in Atmos, configKey, logbackKey) map { (confDir, conf, logback) =>
+      val dir = confDir / name
+      val confFile = dir / "application.conf"
+      val logbackFile = dir / "logback.xml"
+      if (conf.nonEmpty) IO.write(confFile, conf)
+      if (logback.nonEmpty) IO.write(logbackFile, logback)
+      dir
     }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
@@ -162,6 +206,7 @@ object SbtAtmos extends Plugin {
         new AtmosRun(forkConfig, inputs)
     }
 
+  // TODO: make ports configurable, make default console port something other than default play port (9000)
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     val forkRun = new ForkRun(forkConfig)
 
@@ -169,11 +214,10 @@ object SbtAtmos extends Plugin {
       log.info("Starting Atmos and Typesafe Console")
       // TODO: add sigar libs to library path
       val atmosOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.atmosConfig +: atmosInputs.atmosClasspath.files), "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query")
-      // TODO: output directly to log files
-      val strategy = forkConfig.outputStrategy getOrElse LoggedOutput(log)
-      val atmosProcess = Fork.java.fork(None, atmosOptions, None, Map.empty[String, String], false, strategy)
-      val consoleOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.consoleConfig +: atmosInputs.consoleClasspath.files), "-Dhttp.port=9000", "play.core.server.NettyServer")
-      val consoleProcess = Fork.java.fork(None, consoleOptions, None, Map.empty[String, String], false, strategy)
+      val devNull = CustomOutput(NullOutputStream)
+      val atmosProcess = Fork.java.fork(forkConfig.javaHome, atmosOptions, None, Map.empty[String, String], false, devNull)
+      val consoleOptions = Seq("-Xms512m", "-Xmx512m", "-classpath", Path.makeString(atmosInputs.consoleConfig +: atmosInputs.consoleClasspath.files), "-Dhttp.port=9000", "-Dlogger.resource=/logback.xml", "play.core.server.NettyServer")
+      val consoleProcess = Fork.java.fork(forkConfig.javaHome, consoleOptions, None, Map.empty[String, String], false, devNull)
       // TODO: recognise when atmos and console are up and ready
       Thread.sleep(3000)
       try {
@@ -185,6 +229,14 @@ object SbtAtmos extends Plugin {
         consoleProcess.destroy()
       }
     }
+  }
+
+  object NullOutputStream extends java.io.OutputStream {
+    override def close(): Unit = ()
+    override def flush(): Unit = ()
+    override def write(b: Array[Byte]) = ()
+    override def write(b: Array[Byte], off: Int, len: Int) = ()
+    override def write(b: Int) = ()
   }
 
   // Hacks for keeping scala 2.9.2 jars in atmos-console configuration
