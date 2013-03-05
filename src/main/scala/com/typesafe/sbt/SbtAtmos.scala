@@ -1,3 +1,6 @@
+/**
+ *  Copyright (C) 2013 Typesafe, Inc <http://typesafe.com>
+ */
 package com.typesafe.sbt
 
 import sbt._
