@@ -70,7 +70,7 @@ object SbtAtmos extends Plugin {
 
     libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
-    libraryDependencies <++= (atmosVersion in Atmos)(traceDependencies),
+    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
 
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in runWithConsole in Compile <<= atmosRunner)).head,
@@ -89,11 +89,24 @@ object SbtAtmos extends Plugin {
     "com.typesafe.console" % "typesafe-console" % version % AtmosConsole.name
   )
 
-  // TODO: choose trace dependencies based on library dependencies and versions
-  //       and if trace dependencies are not already specified
-  def traceDependencies(version: String) = Seq(
-    "com.typesafe.atmos" % "trace-akka-2.1.1" % version % AtmosTrace.name
-  )
+  def traceDependencies(dependencies: Seq[ModuleID], version: String) = {
+    if (containsTrace(dependencies)) Seq.empty[ModuleID]
+    else if (containsAkka21(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.1.1" % version % AtmosTrace.name)
+    else if (containsAkka20(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.0.5" % version % AtmosTrace.name)
+    else Seq.empty[ModuleID]
+  }
+
+  def containsTrace(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
+    module.organization == "com.typesafe.atmos" && module.name.startsWith("trace-akka")
+  }
+
+  def containsAkka20(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
+    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith("2.0.")
+  }
+
+  def containsAkka21(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
+    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith("2.1.")
+  }
 
   def weaveDependencies(version: String) = Seq(
     "org.aspectj" % "aspectjweaver" % version % AtmosWeave.name
