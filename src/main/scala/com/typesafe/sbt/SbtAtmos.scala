@@ -16,6 +16,7 @@ object SbtAtmos extends Plugin {
     consoleClasspath: Classpath,
     traceClasspath: Classpath,
     aspectjWeaver: Option[File],
+    atmosDirectory: File,
     atmosConfig: File,
     consoleConfig: File,
     traceConfig: File)
@@ -84,7 +85,7 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
+    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
 
     // hacks to retain scala 2.9.2 jars in console dependencies
     scalaVersion := "2.9.2",
@@ -231,7 +232,7 @@ object SbtAtmos extends Plugin {
         "-Dquery.http.port=" + atmosPort,
         "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query"
       )
-      val atmosProcess = Fork.java.fork(forkConfig.javaHome, atmosOptions, None, Map.empty[String, String], false, devNull)
+      val atmosProcess = Fork.java.fork(forkConfig.javaHome, atmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
 
       val consoleOptions = Seq(
         "-Xms512m", "-Xmx512m",
@@ -240,7 +241,7 @@ object SbtAtmos extends Plugin {
         "-Dlogger.resource=/logback.xml",
         "play.core.server.NettyServer"
       )
-      val consoleProcess = Fork.java.fork(forkConfig.javaHome, consoleOptions, None, Map.empty[String, String], false, devNull)
+      val consoleProcess = Fork.java.fork(forkConfig.javaHome, consoleOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
 
       // TODO: recognise when atmos and console are up and ready
       Thread.sleep(3000)
