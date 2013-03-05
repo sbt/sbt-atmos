@@ -45,7 +45,7 @@ object SbtAtmos extends Plugin {
 
   def atmosScopedSettings: Seq[Setting[_]] = Seq(
     atmosVersion := "1.2.0-SNAPSHOT",
-    aspectjVersion := "1.7.1",
+    aspectjVersion := "1.7.2",
 
     atmosClasspath <<= (classpathTypes, update) map managedClasspath(Atmos),
     consoleClasspath <<= (classpathTypes, update) map managedClasspath(AtmosConsole),
