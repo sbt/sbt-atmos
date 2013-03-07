@@ -20,17 +20,17 @@ object Sample {
     for (n ← 1 to 5) {
       system.scheduler.schedule(
         Duration(3000 + ThreadLocalRandom.current.nextInt(1000), MILLISECONDS),
-        4 seconds, actorA, "msg")
+        4.seconds, actorA, "msg")
     }
 
     // peak during 5 seconds each minute
     for (n ← 1 to 50) {
       system.scheduler.schedule(Duration(10000 + (50 * n), MILLISECONDS),
-        1 minute, actorA, "msg")
+        1.minute, actorA, "msg")
     }
 
     // an error once in a while
-    system.scheduler.schedule(30 seconds, 15 minutes, actorA, "err")
+    system.scheduler.schedule(30.seconds, 15.minutes, actorA, "err")
   }
 }
 
