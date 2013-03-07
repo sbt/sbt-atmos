@@ -222,7 +222,7 @@ object SbtAtmos extends Plugin {
 
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       import atmosInputs._
-      log.info("Starting Atmos and Typesafe Console")
+      log.info("Starting Atmos and Typesafe Console ...")
 
       val devNull = CustomOutput(NullOutputStream)
 
@@ -245,6 +245,7 @@ object SbtAtmos extends Plugin {
 
       // TODO: recognise when atmos and console are up and ready
       Thread.sleep(3000)
+      log.info("Typesafe Console is available at http://localhost:" + consolePort)
 
       try {
         val cp = (traceConfig +: traceClasspath.files) ++ classpath
