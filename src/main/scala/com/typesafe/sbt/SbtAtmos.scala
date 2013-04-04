@@ -216,6 +216,7 @@ object SbtAtmos extends Plugin {
     }
 
   // TODO: add sigar libs to library path
+  // TODO: make atmos and console memory options configurable
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     val forkRun = new ForkRun(forkConfig)
 
