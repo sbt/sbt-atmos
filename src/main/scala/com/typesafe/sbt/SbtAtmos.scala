@@ -230,7 +230,7 @@ object SbtAtmos extends Plugin {
         "-Xms512m", "-Xmx512m",
         "-classpath", Path.makeString(atmosConfig +: atmosClasspath.files),
         "-Dquery.http.port=" + atmosPort,
-        "com.typesafe.atmos.AtmosMain", "collect", "analyze", "query"
+        "com.typesafe.atmos.AtmosDev"
       )
       val atmosProcess = Fork.java.fork(forkConfig.javaHome, atmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
 
