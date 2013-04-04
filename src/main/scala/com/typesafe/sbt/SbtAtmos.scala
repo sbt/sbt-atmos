@@ -52,8 +52,6 @@ object SbtAtmos extends Plugin {
     val traceConfig = TaskKey[File]("trace-config")
 
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
-
-    val runWithConsole = InputKey[Unit]("run-with-console")
   }
 
   import AtmosKeys._
@@ -85,7 +83,10 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs
+    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
+
+    inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in run in Atmos <<= atmosRunner)).head,
+    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
@@ -95,9 +96,6 @@ object SbtAtmos extends Plugin {
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
-
-    inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in runWithConsole in Compile <<= atmosRunner)).head,
-    runWithConsole in Compile <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in runWithConsole in Compile),
 
     // hacks to retain scala jars in atmos and console dependencies
     ivyScala <<= ivyScala { is => is.map(_.copy(overrideScalaVersion = false)) },
