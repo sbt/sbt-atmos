@@ -85,11 +85,7 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
-
-    // hacks to retain scala 2.9.2 jars in console dependencies
-    scalaVersion := "2.9.2",
-    scalaInstance <<= atmosScalaInstance
+    atmosInputs <<= (atmosPort, consolePort, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
@@ -103,9 +99,12 @@ object SbtAtmos extends Plugin {
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in runWithConsole in Compile <<= atmosRunner)).head,
     runWithConsole in Compile <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in runWithConsole in Compile),
 
-    // hacks to retain scala 2.9.2 jars in console dependencies
+    // hacks to retain scala jars in atmos and console dependencies
     ivyScala <<= ivyScala { is => is.map(_.copy(overrideScalaVersion = false)) },
-    update <<= transformUpdate
+    scalaInstance in Atmos <<= createScalaInstance("2.9.2"),
+    scalaInstance in AtmosConsole <<= createScalaInstance("2.10.0"),
+    update <<= transformUpdate(Atmos),
+    update <<= transformUpdate(AtmosConsole)
   )
 
   def atmosDependencies(version: String) = Seq(
@@ -266,20 +265,20 @@ object SbtAtmos extends Plugin {
     override def write(b: Int) = ()
   }
 
-  // Hacks for keeping scala 2.9.2 jars in atmos-console configuration
+  // Hacks for keeping scala jars in atmos configurations
 
-  def atmosScalaInstance: Initialize[Task[ScalaInstance]] =
-    (appConfiguration, scalaOrganization, scalaVersion in Atmos) map {
-      (app, org, version) => ScalaInstance(org, version, app.provider.scalaProvider.launcher)
+  def createScalaInstance(version: String): Initialize[Task[ScalaInstance]] =
+    (appConfiguration, scalaOrganization) map {
+      (app, org) => ScalaInstance(org, version, app.provider.scalaProvider.launcher)
     }
 
-  def transformUpdate: Initialize[Task[UpdateReport]] =
-    (update, scalaInstance in Atmos) map { (report, si) => resubstituteScalaJars(report, si) }
+  def transformUpdate(config: Configuration): Initialize[Task[UpdateReport]] =
+    (update, scalaInstance in config) map { (report, si) => resubstituteScalaJars(config.name, report, si) }
 
-  def resubstituteScalaJars(report: UpdateReport, scalaInstance: ScalaInstance): UpdateReport = {
+  def resubstituteScalaJars(config: String, report: UpdateReport, scalaInstance: ScalaInstance): UpdateReport = {
     import ScalaArtifacts._
     report.substitute { (configuration, module, artifacts) =>
-      if (configuration == Atmos.name || configuration == AtmosConsole.name) {
+      if (configuration == config) {
         (module.organization, module.name) match {
           case (Organization, LibraryID)  => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
           case (Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
