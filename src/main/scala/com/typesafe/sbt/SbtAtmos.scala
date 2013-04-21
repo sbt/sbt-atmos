@@ -239,7 +239,6 @@ object SbtAtmos extends Plugin {
       val atmosProcess = Fork.java.fork(forkConfig.javaHome, allAtmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
 
       val allConsoleOptions = consoleOptions ++ Seq(
-        "-Xms512m", "-Xmx512m",
         "-classpath", Path.makeString(consoleConfig +: consoleClasspath.files),
         "-Dhttp.port=" + consolePort,
         "-Dlogger.resource=/logback.xml",
