@@ -114,7 +114,7 @@ object SbtAtmos extends Plugin {
   )
 
   def atmosDependencies(version: String) = Seq(
-    "com.typesafe.atmos" % "atmos-query" % version % Atmos.name
+    "com.typesafe.atmos" % "atmos-dev" % version % Atmos.name
   )
 
   def consoleDependencies(version: String) = Seq(
