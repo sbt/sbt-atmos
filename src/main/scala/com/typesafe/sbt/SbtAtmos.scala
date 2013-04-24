@@ -21,12 +21,14 @@ object SbtAtmos extends Plugin {
     atmosDirectory: File,
     atmosConfig: File,
     consoleConfig: File,
-    traceConfig: File)
+    traceConfig: File,
+    sigarLibs: Option[File])
 
   val Atmos = config("atmos") hide
   val AtmosConsole = config("atmos-console") hide
   val AtmosTrace = config("atmos-trace") hide
   val AtmosWeave = config("atmos-weave") hide
+  val AtmosSigar = config("atmos-sigar") hide
 
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
@@ -55,6 +57,8 @@ object SbtAtmos extends Plugin {
     val traceConfigString = SettingKey[String]("trace-config-string")
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
+
+    val sigarLibs = TaskKey[Option[File]]("sigar-libs")
 
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
@@ -91,19 +95,26 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    atmosInputs <<= (atmosPort, consolePort, atmosOptions, consoleOptions, atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver, atmosDirectory, atmosConfig, consoleConfig, traceConfig) map AtmosInputs,
+    sigarLibs <<= unpackSigar,
+
+    atmosInputs <<= (
+      atmosPort, consolePort, atmosOptions, consoleOptions,
+      atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver,
+      atmosDirectory, atmosConfig, consoleConfig, traceConfig, sigarLibs
+    ) map AtmosInputs,
 
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in run in Atmos <<= atmosRunner)).head,
     run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
-    ivyConfigurations ++= Seq(Atmos, AtmosConsole, AtmosTrace, AtmosWeave),
+    ivyConfigurations ++= Seq(Atmos, AtmosConsole, AtmosTrace, AtmosWeave, AtmosSigar),
 
     libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
+    libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
 
     // hacks to retain scala jars in atmos and console dependencies
     ivyScala <<= ivyScala { is => is.map(_.copy(overrideScalaVersion = false)) },
@@ -142,6 +153,10 @@ object SbtAtmos extends Plugin {
 
   def weaveDependencies(version: String) = Seq(
     "org.aspectj" % "aspectjweaver" % version % AtmosWeave.name
+  )
+
+  def sigarDependencies(version: String) = Seq(
+    "com.typesafe.atmos" % "atmos-sigar-libs" % version % AtmosSigar.name
   )
 
   def managedClasspath(config: Configuration): Initialize[Task[Classpath]] =
@@ -211,17 +226,25 @@ object SbtAtmos extends Plugin {
       dir
     }
 
+  def unpackSigar: Initialize[Task[Option[File]]] = (update, atmosDirectory) map { (report, dir) =>
+    report.matching(moduleFilter(name = "atmos-sigar-libs")).headOption map { jar =>
+      val unzipped = dir / "sigar"
+      IO.unzip(jar, unzipped)
+      unzipped
+    }
+  }
+
   def atmosRunner: Initialize[Task[ScalaRun]] =
     (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
       (si, base, options, strategy, javaHomeDir, connectIn, inputs) =>
         val javaAgent = inputs.aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
+        val javaLibraryPath = inputs.sigarLibs.toSeq map { s => "-Djava.library.path=" + s.getAbsolutePath }
         val aspectjOptions = Seq("-Dorg.aspectj.tracing.factory=default")
-        val atmosOptions = javaAgent ++ aspectjOptions
+        val atmosOptions = javaAgent ++ javaLibraryPath ++ aspectjOptions
         val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), options ++ atmosOptions, connectIn)
         new AtmosRun(forkConfig, inputs)
     }
 
-  // TODO: add sigar libs to library path
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     val forkRun = new ForkRun(forkConfig)
 
