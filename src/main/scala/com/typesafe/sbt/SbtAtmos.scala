@@ -259,7 +259,15 @@ object SbtAtmos extends Plugin {
         "-Dquery.http.port=" + atmosPort,
         "com.typesafe.atmos.AtmosDev"
       )
+
       val atmosProcess = Fork.java.fork(forkConfig.javaHome, allAtmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
+
+      val atmosRunning = spinUntil(attempts = 50, sleep = 100) { checkPort(atmosPort) }
+
+      if (!atmosRunning) {
+        atmosProcess.destroy()
+        sys.error("Could not start Atmos")
+      }
 
       val allConsoleOptions = consoleOptions ++ Seq(
         "-classpath", Path.makeString(consoleConfig +: consoleClasspath.files),
@@ -267,10 +275,16 @@ object SbtAtmos extends Plugin {
         "-Dlogger.resource=/logback.xml",
         "play.core.server.NettyServer"
       )
+
       val consoleProcess = Fork.java.fork(forkConfig.javaHome, allConsoleOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
 
-      // TODO: recognise when atmos and console are up and ready
-      Thread.sleep(3000)
+      val consoleRunning = spinUntil(attempts = 50, sleep = 100) { checkPort(consolePort) }
+
+      if (!consoleRunning) {
+        consoleProcess.destroy()
+        sys.error("Could not start Typesafe Console")
+      }
+
       log.info("Typesafe Console is available at http://localhost:" + consolePort)
 
       try {
@@ -281,6 +295,29 @@ object SbtAtmos extends Plugin {
         atmosProcess.destroy()
         consoleProcess.destroy()
       }
+    }
+
+    // port checking
+
+    def checkPort(port: Int): Boolean = {
+      try {
+        val socket = new java.net.Socket("localhost", port)
+        socket.close()
+        true
+      } catch {
+        case _: java.io.IOException => false
+      }
+    }
+
+    def spinUntil(attempts: Int, sleep: Long)(test: => Boolean): Boolean = {
+      var n = 1
+      var success = false
+      while(n <= attempts && !success) {
+        success = test
+        if (!success) Thread.sleep(sleep)
+        n += 1
+      }
+      success
     }
   }
 
