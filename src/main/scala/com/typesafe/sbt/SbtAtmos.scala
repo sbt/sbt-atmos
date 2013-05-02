@@ -129,7 +129,7 @@ object SbtAtmos extends Plugin {
   )
 
   def consoleDependencies(version: String) = Seq(
-    "com.typesafe.console" % "typesafe-console" % version % AtmosConsole.name
+    "com.typesafe.console" % "console-solo" % version % AtmosConsole.name
   )
 
   def traceDependencies(dependencies: Seq[ModuleID], version: String) = {
