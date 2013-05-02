@@ -114,14 +114,7 @@ object SbtAtmos extends Plugin {
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
-    libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
-
-    // hacks to retain scala jars in atmos and console dependencies
-    ivyScala <<= ivyScala { is => is.map(_.copy(overrideScalaVersion = false)) },
-    scalaInstance in Atmos <<= createScalaInstance("2.9.2"),
-    scalaInstance in AtmosConsole <<= createScalaInstance("2.10.0"),
-    update <<= transformUpdate(Atmos),
-    update <<= transformUpdate(AtmosConsole)
+    libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies)
   )
 
   def atmosDependencies(version: String) = Seq(
@@ -327,28 +320,5 @@ object SbtAtmos extends Plugin {
     override def write(b: Array[Byte]) = ()
     override def write(b: Array[Byte], off: Int, len: Int) = ()
     override def write(b: Int) = ()
-  }
-
-  // Hacks for keeping scala jars in atmos configurations
-
-  def createScalaInstance(version: String): Initialize[Task[ScalaInstance]] =
-    (appConfiguration, scalaOrganization) map {
-      (app, org) => ScalaInstance(org, version, app.provider.scalaProvider.launcher)
-    }
-
-  def transformUpdate(config: Configuration): Initialize[Task[UpdateReport]] =
-    (update, scalaInstance in config) map { (report, si) => resubstituteScalaJars(config.name, report, si) }
-
-  def resubstituteScalaJars(config: String, report: UpdateReport, scalaInstance: ScalaInstance): UpdateReport = {
-    import ScalaArtifacts._
-    report.substitute { (configuration, module, artifacts) =>
-      if (configuration == config) {
-        (module.organization, module.name) match {
-          case (Organization, LibraryID)  => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
-          case (Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
-          case _ => artifacts
-        }
-      } else artifacts
-    }
   }
 }
