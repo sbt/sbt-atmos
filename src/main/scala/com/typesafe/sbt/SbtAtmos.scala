@@ -134,7 +134,7 @@ object SbtAtmos extends Plugin {
 
   def traceDependencies(dependencies: Seq[ModuleID], version: String) = {
     if (containsTrace(dependencies)) Seq.empty[ModuleID]
-    else if (containsAkka21(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.1.1" % version % AtmosTrace.name)
+    else if (containsAkka21(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.1.2" % version % AtmosTrace.name)
     else if (containsAkka20(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.0.5" % version % AtmosTrace.name)
     else Seq.empty[ModuleID]
   }
