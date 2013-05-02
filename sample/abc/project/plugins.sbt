@@ -1,1 +1,1 @@
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "1.2.0-SNAPSHOT")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-SNAPSHOT")
