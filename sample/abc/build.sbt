@@ -1,5 +1,5 @@
 
-name := "ABCSample"
+name := "ABC Sample"
 
 scalaVersion := "2.10.1"
 
