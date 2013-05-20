@@ -111,7 +111,6 @@ object SbtAtmos extends Plugin {
     ivyConfigurations ++= Seq(Atmos, AtmosConsole, AtmosTrace, AtmosWeave, AtmosSigar),
 
     resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
-    resolvers += "Atmos Releases" at "http://repo.typesafe.com/typesafe/atmos-releases",
 
     libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
