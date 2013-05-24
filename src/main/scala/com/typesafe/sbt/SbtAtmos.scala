@@ -54,6 +54,10 @@ object SbtAtmos extends Plugin {
     val consoleConfigString = SettingKey[String]("console-config-string")
     val consoleLogbackString = SettingKey[String]("console-logback-string")
     val consoleConfig = TaskKey[File]("console-config")
+    val traceable = SettingKey[Seq[(String, Boolean)]]("traceable")
+    val traceableConfigString = SettingKey[String]("traceable-config-string")
+    val sampling = SettingKey[Seq[(String, Int)]]("sampling")
+    val samplingConfigString = SettingKey[String]("sampling-config-string")
     val traceConfigString = SettingKey[String]("trace-config-string")
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
@@ -91,7 +95,11 @@ object SbtAtmos extends Plugin {
     consoleConfigString <<= (name, atmosPort) apply defaultConsoleConfig,
     consoleLogbackString <<= defaultLogbackConfig("console"),
     consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
-    traceConfigString <<= normalizedName apply defaultTraceConfig,
+    traceable := Seq("*" -> true),
+    traceableConfigString <<= traceable apply { s => seqToConfig(s, indent = 6, quote = true) },
+    sampling := Seq("*" -> 1),
+    samplingConfigString <<= sampling apply { s => seqToConfig(s, indent = 6, quote = true) },
+    traceConfigString <<= (normalizedName, traceableConfigString, samplingConfigString) apply defaultTraceConfig,
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
@@ -179,20 +187,31 @@ object SbtAtmos extends Plugin {
     |app.url="http://localhost:%s/monitoring"
   """.trim.stripMargin.format(name, atmosPort.toString)
 
-  def defaultTraceConfig(name: String): String = """
-    |atmos {
-    |  trace {
-    |    enabled = true
-    |    node = "%s"
-    |    traceable {
-    |      "*" = on
-    |    }
-    |    sampling {
-    |      "*" = 1
-    |    }
-    |  }
-    |}
-  """.trim.stripMargin.format(name)
+  def seqToConfig(seq: Seq[(String, Any)], indent: Int, quote: Boolean): String = {
+    seq map { case (k, v) =>
+      val indented = " " * indent
+      val key = if (quote) "\"%s\"" format k else k
+      val value = v
+      "%s%s = %s" format (indented, key, value)
+    } mkString ("\n")
+  }
+
+  def defaultTraceConfig(name: String, traceable: String, sampling: String): String = {
+    """
+      |atmos {
+      |  trace {
+      |    enabled = true
+      |    node = "%s"
+      |    traceable {
+      |%s
+      |    }
+      |    sampling {
+      |%s
+      |    }
+      |  }
+      |}
+    """.trim.stripMargin.format(name, traceable, sampling)
+  }
 
   def defaultLogbackConfig(name: String): Initialize[String] = atmosLogDirectory { dir =>
     """
