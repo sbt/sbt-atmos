@@ -6,6 +6,7 @@ package com.typesafe.sbt
 import sbt._
 import sbt.Keys._
 import sbt.Project.Initialize
+import java.net.URI
 
 object SbtAtmos extends Plugin {
 
@@ -22,7 +23,8 @@ object SbtAtmos extends Plugin {
     atmosConfig: File,
     consoleConfig: File,
     traceConfig: File,
-    sigarLibs: Option[File])
+    sigarLibs: Option[File],
+    runListeners: Seq[URI => Unit])
 
   val Atmos = config("atmos") hide
   val AtmosConsole = config("atmos-console") hide
@@ -63,6 +65,8 @@ object SbtAtmos extends Plugin {
     val traceConfig = TaskKey[File]("trace-config")
 
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
+
+    val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
 
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
@@ -105,10 +109,14 @@ object SbtAtmos extends Plugin {
 
     sigarLibs <<= unpackSigar,
 
+    atmosRunListeners := Seq.empty,
+    atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
+
     atmosInputs <<= (
       atmosPort, consolePort, atmosOptions, consoleOptions,
       atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver,
-      atmosDirectory, atmosConfig, consoleConfig, traceConfig, sigarLibs
+      atmosDirectory, atmosConfig, consoleConfig, traceConfig, sigarLibs,
+      atmosRunListeners
     ) map AtmosInputs,
 
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in run in Atmos <<= atmosRunner)).head,
@@ -254,6 +262,10 @@ object SbtAtmos extends Plugin {
     }
   }
 
+  def logConsoleUri(log: Logger)(uri: URI) = {
+    log.info("Typesafe Console is available at " + uri)
+  }
+
   def atmosRunner: Initialize[Task[ScalaRun]] =
     (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
       (si, base, options, strategy, javaHomeDir, connectIn, inputs) =>
@@ -305,7 +317,8 @@ object SbtAtmos extends Plugin {
         sys.error("Could not start Typesafe Console")
       }
 
-      log.info("Typesafe Console is available at http://localhost:" + consolePort)
+      val consoleUri = new URI("http://localhost:" + consolePort)
+      for (listener <- runListeners) listener(consoleUri)
 
       try {
         val cp = (traceConfig +: traceClasspath.files) ++ classpath
