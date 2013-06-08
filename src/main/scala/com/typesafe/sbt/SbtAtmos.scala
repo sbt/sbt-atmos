@@ -10,6 +10,10 @@ import java.net.URI
 
 object SbtAtmos extends Plugin {
 
+  val Akka20Version = "2.0.5"
+  val Akka21Version = "2.1.4"
+  val Akka22Version = "2.2.0-RC1"
+
   case class AtmosInputs(
     atmosPort: Int,
     consolePort: Int,
@@ -65,9 +69,7 @@ object SbtAtmos extends Plugin {
     val traceConfig = TaskKey[File]("trace-config")
 
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
-
     val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
-
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
 
@@ -76,7 +78,7 @@ object SbtAtmos extends Plugin {
   lazy val atmosSettings: Seq[Setting[_]] = inConfig(Atmos)(atmosScopedSettings) ++ atmosUnscopedSettings
 
   def atmosScopedSettings: Seq[Setting[_]] = Seq(
-    atmosVersion := "1.2.0-M4",
+    atmosVersion := "1.2.0-M5",
     aspectjVersion := "1.7.2",
 
     atmosPort := 8667,
@@ -145,8 +147,9 @@ object SbtAtmos extends Plugin {
 
   def traceDependencies(dependencies: Seq[ModuleID], version: String) = {
     if (containsTrace(dependencies)) Seq.empty[ModuleID]
-    else if (containsAkka21(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.1.2" % version % AtmosTrace.name)
-    else if (containsAkka20(dependencies)) Seq("com.typesafe.atmos" % "trace-akka-2.0.5" % version % AtmosTrace.name)
+    else if (containsAkka(dependencies, "2.0.")) traceAkkaDependencies(Akka20Version, version, CrossVersion.Disabled)
+    else if (containsAkka(dependencies, "2.1.")) traceAkkaDependencies(Akka21Version, version, CrossVersion.Disabled)
+    else if (containsAkka(dependencies, "2.2.")) traceAkkaDependencies(Akka22Version, version, CrossVersion.full)
     else Seq.empty[ModuleID]
   }
 
@@ -154,13 +157,13 @@ object SbtAtmos extends Plugin {
     module.organization == "com.typesafe.atmos" && module.name.startsWith("trace-akka")
   }
 
-  def containsAkka20(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
-    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith("2.0.")
+  def containsAkka(dependencies: Seq[ModuleID], versionPrefix: String): Boolean = dependencies exists { module =>
+    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith(versionPrefix)
   }
 
-  def containsAkka21(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
-    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith("2.1.")
-  }
+  def traceAkkaDependencies(akkaVersion: String, atmosVersion: String, crossVersion: CrossVersion) = Seq(
+    "com.typesafe.atmos" % ("trace-akka-" + akkaVersion) % atmosVersion % AtmosTrace.name cross crossVersion
+  )
 
   def weaveDependencies(version: String) = Seq(
     "org.aspectj" % "aspectjweaver" % version % AtmosWeave.name
