@@ -36,7 +36,7 @@ Feel free to use it accordingly.
 
 
 [sbt]: https://github.com/sbt/sbt
-[console]: http://typesafe.com/products/console
+[console]: http://typesafe.com/platform/runtime/console
 [email]: http://groups.google.com/group/typesafe-console
 [cla]: http://www.typesafe.com/contribute/cla
 [apache]: http://www.apache.org/licenses/LICENSE-2.0.html
