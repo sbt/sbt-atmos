@@ -122,7 +122,8 @@ object SbtAtmos extends Plugin {
     ) map AtmosInputs,
 
     inScope(Scope(This, Select(Compile), Select(run.key), This))(Seq(runner in run in Atmos <<= atmosRunner)).head,
-    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run)
+    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run),
+    runMain <<= Defaults.runMainTask(fullClasspath in Runtime, runner in run)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
