@@ -40,8 +40,9 @@ object SbtAtmos extends Plugin {
     val atmosVersion = SettingKey[String]("atmos-version")
     val aspectjVersion = SettingKey[String]("aspectj-version")
 
-    val atmosPort = SettingKey[Int]("atmos-port")
-    val consolePort = SettingKey[Int]("console-port")
+    val atmosPort = TaskKey[Int]("atmos-port")
+    val consolePort = TaskKey[Int]("console-port")
+    val tracePort = TaskKey[Int]("trace-port")
 
     val atmosOptions = TaskKey[Seq[String]]("atmos-options")
     val consoleOptions = TaskKey[Seq[String]]("console-options")
@@ -54,17 +55,17 @@ object SbtAtmos extends Plugin {
     val atmosDirectory = SettingKey[File]("atmos-directory")
     val atmosConfigDirectory = SettingKey[File]("atmos-config-directory")
     val atmosLogDirectory = SettingKey[File]("atmos-log-directory")
-    val atmosConfigString = SettingKey[String]("atmos-config-string")
+    val atmosConfigString = TaskKey[String]("atmos-config-string")
     val atmosLogbackString = SettingKey[String]("atmos-logback-string")
     val atmosConfig = TaskKey[File]("atmos-config")
-    val consoleConfigString = SettingKey[String]("console-config-string")
+    val consoleConfigString = TaskKey[String]("console-config-string")
     val consoleLogbackString = SettingKey[String]("console-logback-string")
     val consoleConfig = TaskKey[File]("console-config")
     val traceable = SettingKey[Seq[(String, Boolean)]]("traceable")
     val traceableConfigString = SettingKey[String]("traceable-config-string")
     val sampling = SettingKey[Seq[(String, Int)]]("sampling")
     val samplingConfigString = SettingKey[String]("sampling-config-string")
-    val traceConfigString = SettingKey[String]("trace-config-string")
+    val traceConfigString = TaskKey[String]("trace-config-string")
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
 
@@ -81,8 +82,9 @@ object SbtAtmos extends Plugin {
     atmosVersion := "1.2.0-M5",
     aspectjVersion := "1.7.2",
 
-    atmosPort := 8667,
-    consolePort := 9900,
+    atmosPort := selectPort(8660),
+    consolePort := selectPort(9900),
+    tracePort := selectPort(28660),
 
     atmosOptions := Seq("-Xms512m", "-Xmx512m"),
     consoleOptions := Seq("-Xms512m", "-Xmx512m"),
@@ -95,17 +97,17 @@ object SbtAtmos extends Plugin {
     atmosDirectory <<= target / "atmos",
     atmosConfigDirectory <<= atmosDirectory / "conf",
     atmosLogDirectory <<= atmosDirectory / "log",
-    atmosConfigString := defaultAtmosConfig,
+    atmosConfigString <<= tracePort map defaultAtmosConfig,
     atmosLogbackString <<= defaultLogbackConfig("atmos"),
     atmosConfig <<= writeConfig("atmos", atmosConfigString, atmosLogbackString),
-    consoleConfigString <<= (name, atmosPort) apply defaultConsoleConfig,
+    consoleConfigString <<= (name, atmosPort) map defaultConsoleConfig,
     consoleLogbackString <<= defaultLogbackConfig("console"),
     consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
     traceable := Seq("*" -> true),
     traceableConfigString <<= traceable apply { s => seqToConfig(s, indent = 6, quote = true) },
     sampling := Seq("*" -> 1),
     samplingConfigString <<= sampling apply { s => seqToConfig(s, indent = 6, quote = true) },
-    traceConfigString <<= (normalizedName, traceableConfigString, samplingConfigString) apply defaultTraceConfig,
+    traceConfigString <<= (normalizedName, traceableConfigString, samplingConfigString, tracePort) map defaultTraceConfig,
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
@@ -180,7 +182,15 @@ object SbtAtmos extends Plugin {
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
     update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
 
-  def defaultAtmosConfig(): String = """
+  def selectPort(preferred: Int): Int = {
+    var port = preferred
+    val limit = preferred + 10
+    while (port < limit && busy(port)) port += 1
+    if (busy(port)) sys.error("No available port in range [%s-%s]".format(preferred, limit))
+    port
+  }
+
+  def defaultAtmosConfig(tracePort: Int): String = """
     |akka {
     |  loglevel = INFO
     |  event-handlers = ["akka.event.slf4j.Slf4jEventHandler"]
@@ -190,14 +200,15 @@ object SbtAtmos extends Plugin {
     |  mode = local
     |  trace {
     |    event-handlers = ["com.typesafe.atmos.trace.store.MemoryTraceEventListener", "com.typesafe.atmos.analytics.analyze.LocalAnalyzerTraceEventListener"]
+    |    receive.port = %s
     |  }
     |}
-  """.trim.stripMargin
+  """.trim.stripMargin.format(tracePort)
 
   def defaultConsoleConfig(name: String, atmosPort: Int): String = """
     |app.name = "%s"
     |app.url="http://localhost:%s/monitoring"
-  """.trim.stripMargin.format(name, atmosPort.toString)
+  """.trim.stripMargin.format(name, atmosPort)
 
   def seqToConfig(seq: Seq[(String, Any)], indent: Int, quote: Boolean): String = {
     seq map { case (k, v) =>
@@ -208,7 +219,7 @@ object SbtAtmos extends Plugin {
     } mkString ("\n")
   }
 
-  def defaultTraceConfig(name: String, traceable: String, sampling: String): String = {
+  def defaultTraceConfig(name: String, traceable: String, sampling: String, tracePort: Int): String = {
     """
       |atmos {
       |  trace {
@@ -220,9 +231,10 @@ object SbtAtmos extends Plugin {
       |    sampling {
       |%s
       |    }
+      |    send.port = %s
       |  }
       |}
-    """.trim.stripMargin.format(name, traceable, sampling)
+    """.trim.stripMargin.format(name, traceable, sampling, tracePort)
   }
 
   def defaultLogbackConfig(name: String): Initialize[String] = atmosLogDirectory { dir =>
@@ -248,7 +260,7 @@ object SbtAtmos extends Plugin {
     """.stripMargin
   }
 
-  def writeConfig(name: String, configKey: SettingKey[String], logbackKey: SettingKey[String]): Initialize[Task[File]] =
+  def writeConfig(name: String, configKey: TaskKey[String], logbackKey: SettingKey[String]): Initialize[Task[File]] =
     (atmosConfigDirectory in Atmos, configKey, logbackKey) map { (confDir, conf, logback) =>
       val dir = confDir / name
       val confFile = dir / "application.conf"
@@ -297,12 +309,11 @@ object SbtAtmos extends Plugin {
       )
 
       val atmosProcess = Fork.java.fork(forkConfig.javaHome, allAtmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
-
-      val atmosRunning = spinUntil(attempts = 50, sleep = 100) { checkPort(atmosPort) }
+      val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
 
       if (!atmosRunning) {
         atmosProcess.destroy()
-        sys.error("Could not start Atmos")
+        sys.error("Could not start Atmos on port [%s]" format atmosPort)
       }
 
       val allConsoleOptions = consoleOptions ++ Seq(
@@ -312,13 +323,15 @@ object SbtAtmos extends Plugin {
         "play.core.server.NettyServer"
       )
 
-      val consoleProcess = Fork.java.fork(forkConfig.javaHome, allConsoleOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
-
-      val consoleRunning = spinUntil(attempts = 50, sleep = 100) { checkPort(consolePort) }
+      val consoleDirectory = IO.createTemporaryDirectory // for pid file
+      val consoleProcess = Fork.java.fork(forkConfig.javaHome, allConsoleOptions, Some(consoleDirectory), Map.empty[String, String], false, devNull)
+      val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
 
       if (!consoleRunning) {
+        atmosProcess.destroy()
         consoleProcess.destroy()
-        sys.error("Could not start Typesafe Console")
+        IO.delete(consoleDirectory)
+        sys.error("Could not start Typesafe Console on port [%s]" format consolePort)
       }
 
       val consoleUri = new URI("http://localhost:" + consolePort)
@@ -331,31 +344,32 @@ object SbtAtmos extends Plugin {
         log.info("Stopping Atmos and Typesafe Console")
         atmosProcess.destroy()
         consoleProcess.destroy()
+        IO.delete(consoleDirectory)
       }
     }
+  }
 
-    // port checking
+  // port checking
 
-    def checkPort(port: Int): Boolean = {
-      try {
-        val socket = new java.net.Socket("localhost", port)
-        socket.close()
-        true
-      } catch {
-        case _: java.io.IOException => false
-      }
+  def busy(port: Int): Boolean = {
+    try {
+      val socket = new java.net.Socket("localhost", port)
+      socket.close()
+      true
+    } catch {
+      case _: java.io.IOException => false
     }
+  }
 
-    def spinUntil(attempts: Int, sleep: Long)(test: => Boolean): Boolean = {
-      var n = 1
-      var success = false
-      while(n <= attempts && !success) {
-        success = test
-        if (!success) Thread.sleep(sleep)
-        n += 1
-      }
-      success
+  def spinUntil(attempts: Int, sleep: Long)(test: => Boolean): Boolean = {
+    var n = 1
+    var success = false
+    while(n <= attempts && !success) {
+      success = test
+      if (!success) Thread.sleep(sleep)
+      n += 1
     }
+    success
   }
 
   object NullOutputStream extends java.io.OutputStream {
