@@ -11,7 +11,7 @@ This plugin requires sbt 0.12.
 
 Add plugin to `project/plugins.sbt`. For example:
 
-    addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-SNAPSHOT")
+    addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-M2")
 
 
 Mailing list
