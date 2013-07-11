@@ -78,6 +78,18 @@ Mailing list
 Please use the [Typesafe Console mailing list][email].
 
 
+License
+-------
+
+[Typesafe Console][console] is licensed under the [Typesafe Subscription Agreement][license]
+and is made available through the sbt-atmos plugin for development use only.
+
+The code for the sbt-atmos plugin is open source software licensed under the
+[Apache 2.0 License][apache].
+
+For more information see [Typesafe licenses][licenses].
+
+
 Contribution policy
 -------------------
 
@@ -86,16 +98,11 @@ author. Before we can accept pull requests, you will need to agree to the
 [Typesafe Contributor License Agreement][cla] online, using your GitHub account.
 
 
-License
--------
-
-This code is open source software licensed under the [Apache 2.0 License][apache].
-Feel free to use it accordingly.
-
-
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
 [config]: https://github.com/typesafehub/config
 [email]: http://groups.google.com/group/typesafe-console
-[cla]: http://www.typesafe.com/contribute/cla
+[license]: http://github.com/typesafehub/sbt-atmos/blob/master/TypesafeSubscriptionAgreement.md
 [apache]: http://www.apache.org/licenses/LICENSE-2.0.html
+[licenses]: http://typesafe.com/legal/licenses
+[cla]: http://www.typesafe.com/contribute/cla
