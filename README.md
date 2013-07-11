@@ -101,6 +101,13 @@ For applications with heavier loads you should select specific parts of the
 application to trace.
 
 
+More Information
+----------------
+
+For more information see the [documentation] for the full production version of
+Typesafe Console.
+
+
 Mailing list
 ------------
 
@@ -131,6 +138,7 @@ author. Before we can accept pull requests, you will need to agree to the
 [console]: http://typesafe.com/platform/runtime/console
 [sample]: https://github.com/typesafehub/sbt-atmos/tree/master/sample/abc
 [config]: https://github.com/typesafehub/config
+[documentation]: http://resources.typesafe.com/docs/console
 [email]: http://groups.google.com/group/typesafe-console
 [license]: http://github.com/typesafehub/sbt-atmos/blob/master/TypesafeSubscriptionAgreement.md
 [apache]: http://www.apache.org/licenses/LICENSE-2.0.html
