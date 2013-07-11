@@ -1,8 +1,8 @@
 
 name := "ABC Sample"
 
-scalaVersion := "2.11.0-M3"
+scalaVersion := "2.10.2"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0-RC1" cross CrossVersion.full
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
 
 atmosSettings

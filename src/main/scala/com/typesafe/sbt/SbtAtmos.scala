@@ -12,7 +12,7 @@ object SbtAtmos extends Plugin {
 
   val Akka20Version = "2.0.5"
   val Akka21Version = "2.1.4"
-  val Akka22Version = "2.2.0-RC1"
+  val Akka22Version = "2.2.0"
 
   case class AtmosInputs(
     atmosPort: Int,
@@ -79,7 +79,7 @@ object SbtAtmos extends Plugin {
   lazy val atmosSettings: Seq[Setting[_]] = inConfig(Atmos)(atmosScopedSettings) ++ atmosUnscopedSettings
 
   def atmosScopedSettings: Seq[Setting[_]] = Seq(
-    atmosVersion := "1.2.0-M5",
+    atmosVersion := "1.2.0-M6",
     aspectjVersion := "1.7.2",
 
     atmosPort := selectPort(8660),
@@ -135,7 +135,7 @@ object SbtAtmos extends Plugin {
 
     libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
-    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos)(traceDependencies),
+    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies)
   )
@@ -148,11 +148,11 @@ object SbtAtmos extends Plugin {
     "com.typesafe.console" % "console-solo" % version % AtmosConsole.name
   )
 
-  def traceDependencies(dependencies: Seq[ModuleID], version: String) = {
+  def traceDependencies(dependencies: Seq[ModuleID], version: String, scalaVersion: String) = {
     if (containsTrace(dependencies)) Seq.empty[ModuleID]
     else if (containsAkka(dependencies, "2.0.")) traceAkkaDependencies(Akka20Version, version, CrossVersion.Disabled)
     else if (containsAkka(dependencies, "2.1.")) traceAkkaDependencies(Akka21Version, version, CrossVersion.Disabled)
-    else if (containsAkka(dependencies, "2.2.")) traceAkkaDependencies(Akka22Version, version, CrossVersion.full)
+    else if (containsAkka(dependencies, "2.2.")) traceAkkaDependencies(Akka22Version, version, akka22CrossVersion(scalaVersion))
     else Seq.empty[ModuleID]
   }
 
@@ -162,6 +162,10 @@ object SbtAtmos extends Plugin {
 
   def containsAkka(dependencies: Seq[ModuleID], versionPrefix: String): Boolean = dependencies exists { module =>
     module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith(versionPrefix)
+  }
+
+  def akka22CrossVersion(scalaVersion: String) = {
+    if (scalaVersion startsWith "2.11.0-") CrossVersion.full else CrossVersion.binary
   }
 
   def traceAkkaDependencies(akkaVersion: String, atmosVersion: String, crossVersion: CrossVersion) = Seq(
