@@ -135,10 +135,14 @@ object SbtAtmos extends Plugin {
 
     libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
-    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(traceDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
-    libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies)
+    libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
+    autoTraceDependencies
   )
+
+  def autoTraceDependencies = {
+    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(traceDependencies)
+  }
 
   def atmosDependencies(version: String) = Seq(
     "com.typesafe.atmos" % "atmos-dev" % version % Atmos.name
