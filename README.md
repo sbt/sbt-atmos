@@ -108,10 +108,14 @@ For more information see the [documentation] for the full production version of
 Typesafe Console.
 
 
-Mailing list
-------------
+Feedback
+--------
 
-Please use the [Typesafe Console mailing list][email].
+We welcome your feedback and ideas for using Typesafe Console for development.
+There is a `Send Feedback` link available when running the Typesafe Console web
+interface, or you can go directly to [Typesafe Support][support].
+
+You can also use the [Typesafe Console mailing list][email].
 
 
 License
@@ -139,6 +143,7 @@ author. Before we can accept pull requests, you will need to agree to the
 [sample]: https://github.com/typesafehub/sbt-atmos/tree/master/sample/abc
 [config]: https://github.com/typesafehub/config
 [documentation]: http://resources.typesafe.com/docs/console
+[support]: http://support.typesafe.com
 [email]: http://groups.google.com/group/typesafe-console
 [license]: http://github.com/typesafehub/sbt-atmos/blob/master/TypesafeSubscriptionAgreement.md
 [apache]: http://www.apache.org/licenses/LICENSE-2.0.html
