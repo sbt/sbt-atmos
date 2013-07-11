@@ -9,7 +9,7 @@ Add plugin
 
 This plugin requires sbt 0.12.
 
-Add plugin to `project/plugins.sbt`. For example:
+Add the sbt-atmos plugin to `project/plugins.sbt`. For example:
 
 ```scala
 addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-SNAPSHOT")
@@ -21,7 +21,13 @@ Add the sbt-atmos settings to the project. For a `.sbt` build, add a line with:
 atmosSettings
 ```
 
-For a full `.scala` build, add these settings to your project settings:
+**Note:** *These settings need to come after the Akka library dependency
+settings, to have the appropriate trace dependencies automatically added based
+on the Akka version being used. Otherwise an extra dependency will need to be
+added manually.*
+
+For a full `.scala` build, add these settings to your project settings, after
+the Akka library dependencies:
 
 ```scala
 com.typesafe.sbt.SbtAtmos.atmosSettings
@@ -38,17 +44,35 @@ object SampleBuild extends Build {
   lazy val sample = Project(
     id = "sample",
     base = file("."),
-    settings = Defaults.defaultSettings ++ atmosSettings ++ Seq(
+    settings = Defaults.defaultSettings ++ Seq(
       name := "Sample",
       scalaVersion := "2.10.2",
       libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
     )
-  )
+  ) settings (atmosSettings: _*)
 }
 ```
 
 A simple [sample Akka project][sample] configured with the sbt-atmos plugin is
 included in this repository.
+
+
+Trace dependencies
+------------------
+
+The sbt-atmos plugin will automatically add a library dependency which includes
+Aspectj aspects for the Akka dependency being used, providing the settings are
+added as described above.
+
+To manually or explicitly specify the trace dependency, select an appropriate
+dependency to include from:
+
+```scala
+"com.typesafe.atmos" % "trace-akka-2.0.5"           % "1.2.0-M6"
+"com.typesafe.atmos" % "trace-akka-2.1.4"           % "1.2.0-M6"
+"com.typesafe.atmos" % "trace-akka-2.2.0_2.10"      % "1.2.0-M6"
+"com.typesafe.atmos" % "trace-akka-2.2.0_2.11.0-M3" % "1.2.0-M6"
+```
 
 
 Run with Typesafe Console
