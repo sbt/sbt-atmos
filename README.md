@@ -1,7 +1,7 @@
 sbt-atmos
 =========
 
-[sbt] plugin for running the [Typesafe Console][console] in development.
+[sbt] plugin for running [Typesafe Console][console] in development.
 
 
 Add plugin
@@ -15,18 +15,47 @@ Add plugin to `project/plugins.sbt`. For example:
 addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-SNAPSHOT")
 ```
 
-Add the sbt-atmos settings to the project. For a `build.sbt` and a line with:
+Add the sbt-atmos settings to the project. For a `.sbt` build, add a line with:
 
 ```scala
 atmosSettings
 ```
 
+For a full `.scala` build, add these settings to your project settings:
+
+```scala
+com.typesafe.sbt.SbtAtmos.atmosSettings
+```
+
+For example:
+
+```scala
+import sbt._
+import sbt.Keys._
+import com.typesafe.sbt.SbtAtmos.atmosSettings
+
+object SampleBuild extends Build {
+  lazy val sample = Project(
+    id = "sample",
+    base = file("."),
+    settings = Defaults.defaultSettings ++ atmosSettings ++ Seq(
+      name := "Sample",
+      scalaVersion := "2.10.2",
+      libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
+    )
+  )
+}
+```
+
+A simple [sample Akka project][sample] configured with the sbt-atmos plugin is
+included in this repository.
+
 
 Run with Typesafe Console
 -------------------------
 
-To run your application with the Typesafe Console there are extra versions of
-the `run` and `run-main` tasks. These use the same underlying settings for the
+To run your application with Typesafe Console there are extra versions of the
+`run` and `run-main` tasks. These use the same underlying settings for the
 regular `run` tasks, and also add the configuration needed to instrument your
 application, and start and stop Typesafe Console.
 
@@ -100,6 +129,7 @@ author. Before we can accept pull requests, you will need to agree to the
 
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
+[sample]: https://github.com/typesafehub/sbt-atmos/tree/master/sample/abc
 [config]: https://github.com/typesafehub/config
 [email]: http://groups.google.com/group/typesafe-console
 [license]: http://github.com/typesafehub/sbt-atmos/blob/master/TypesafeSubscriptionAgreement.md
