@@ -255,9 +255,9 @@ object AtmosRunner {
       val javaOptions = config.runJVMOptions ++ Seq("-classpath", Path.makeString(classpath), mainClass) ++ options
       val strategy = config.outputStrategy getOrElse LoggedOutput(log)
       workingDirectory = if (temporary) Some(IO.createTemporaryDirectory) else config.workingDirectory
-      process = Fork.java.fork(config.javaHome, javaOptions, workingDirectory, Map.empty[String, String], config.connectInput, strategy)
       shutdownHook = new Thread(new Runnable { def run(): Unit = destroy() })
       JRuntime.getRuntime.addShutdownHook(shutdownHook)
+      process = Fork.java.fork(config.javaHome, javaOptions, workingDirectory, Map.empty[String, String], config.connectInput, strategy)
       this
     }
 
