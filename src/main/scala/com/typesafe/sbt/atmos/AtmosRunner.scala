@@ -8,6 +8,7 @@ import sbt._
 import sbt.Keys._
 import sbt.Project.Initialize
 import java.net.URI
+import java.lang.{ Runtime => JRuntime }
 
 object AtmosRunner {
   import SbtAtmos.Atmos
@@ -196,43 +197,34 @@ object AtmosRunner {
     }
 
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
-    val forkRun = new ForkRun(forkConfig)
-
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       import atmosInputs._
       log.info("Starting Atmos and Typesafe Console ...")
 
-      val devNull = CustomOutput(NullOutputStream)
+      val devNull = Some(CustomOutput(NullOutputStream))
 
-      val allAtmosOptions = atmosOptions ++ Seq(
-        "-classpath", Path.makeString(atmosConfig +: atmosClasspath.files),
-        "-Dquery.http.port=" + atmosPort,
-        "com.typesafe.atmos.AtmosDev"
-      )
-
-      val atmosProcess = Fork.java.fork(forkConfig.javaHome, allAtmosOptions, Some(atmosDirectory), Map.empty[String, String], false, devNull)
+      val atmosMain = "com.typesafe.atmos.AtmosDev"
+      val atmosCp = atmosConfig +: atmosClasspath.files
+      val atmosJVMOptions = atmosOptions ++ Seq("-Dquery.http.port=" + atmosPort)
+      val atmosForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
+      val atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
 
       if (!atmosRunning) {
-        atmosProcess.destroy()
+        atmos.stop()
         sys.error("Could not start Atmos on port [%s]" format atmosPort)
       }
 
-      val allConsoleOptions = consoleOptions ++ Seq(
-        "-classpath", Path.makeString(consoleConfig +: consoleClasspath.files),
-        "-Dhttp.port=" + consolePort,
-        "-Dlogger.resource=/logback.xml",
-        "play.core.server.NettyServer"
-      )
-
-      val consoleDirectory = IO.createTemporaryDirectory // for pid file
-      val consoleProcess = Fork.java.fork(forkConfig.javaHome, allConsoleOptions, Some(consoleDirectory), Map.empty[String, String], false, devNull)
+      val consoleMain = "play.core.server.NettyServer"
+      val consoleCp = consoleConfig +: consoleClasspath.files
+      val consoleJVMOptions = consoleOptions ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
+      val consoleForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
+      val console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
 
       if (!consoleRunning) {
-        atmosProcess.destroy()
-        consoleProcess.destroy()
-        IO.delete(consoleDirectory)
+        atmos.stop()
+        console.stop()
         sys.error("Could not start Typesafe Console on port [%s]" format consolePort)
       }
 
@@ -240,13 +232,63 @@ object AtmosRunner {
       for (listener <- runListeners) listener(consoleUri)
 
       try {
+        log.info("Running " + mainClass + " " + options.mkString(" "))
         val cp = (traceConfig +: traceClasspath.files) ++ classpath
-        forkRun.run(mainClass, cp, options, log)
+        val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
+        val exitCode = forkRun.run(mainClass, cp, options).exitValue()
+        forkRun.cancelShutdownHook()
+        if (exitCode == 0) None
+        else Some("Nonzero exit code returned from runner: " + exitCode)
       } finally {
-        log.info("Stopping Atmos and Typesafe Console")
-        atmosProcess.destroy()
-        consoleProcess.destroy()
-        IO.delete(consoleDirectory)
+        atmos.stop()
+        console.stop()
+      }
+    }
+  }
+
+  class Forked(name: String, config: ForkScalaRun, temporary: Boolean, log: Logger) {
+    @volatile private var workingDirectory: Option[File] = None
+    @volatile private var process: Process = _
+    @volatile private var shutdownHook: Thread = _
+
+    def run(mainClass: String, classpath: Seq[File], options: Seq[String] = Seq.empty): Forked = {
+      val javaOptions = config.runJVMOptions ++ Seq("-classpath", Path.makeString(classpath), mainClass) ++ options
+      val strategy = config.outputStrategy getOrElse LoggedOutput(log)
+      workingDirectory = if (temporary) Some(IO.createTemporaryDirectory) else config.workingDirectory
+      process = Fork.java.fork(config.javaHome, javaOptions, workingDirectory, Map.empty[String, String], config.connectInput, strategy)
+      shutdownHook = new Thread(new Runnable { def run(): Unit = destroy() })
+      JRuntime.getRuntime.addShutdownHook(shutdownHook)
+      this
+    }
+
+    def exitValue(): Int = {
+      if (process ne null) {
+        try process.exitValue()
+        catch { case e: InterruptedException => destroy(); 1 }
+      } else 0
+    }
+
+    def stop(): Unit = {
+      cancelShutdownHook()
+      destroy()
+    }
+
+    def destroy(): Unit = {
+      if (process ne null) {
+        log.info("Stopping " + name)
+        process.destroy()
+        process = null.asInstanceOf[Process]
+        if (temporary) {
+          workingDirectory foreach IO.delete
+          workingDirectory = None
+        }
+      }
+    }
+
+    def cancelShutdownHook(): Unit = {
+      if (shutdownHook ne null) {
+        JRuntime.getRuntime.removeShutdownHook(shutdownHook)
+        shutdownHook = null.asInstanceOf[Thread]
       }
     }
   }
