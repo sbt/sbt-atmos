@@ -201,7 +201,7 @@ object AtmosRunner {
       import atmosInputs._
       log.info("Starting Atmos and Typesafe Console ...")
 
-      val devNull = Some(CustomOutput(NullOutputStream))
+      val devNull = Some(LoggedOutput(DevNullLogger))
 
       val atmosMain = "com.typesafe.atmos.AtmosDev"
       val atmosCp = atmosConfig +: atmosClasspath.files
@@ -316,11 +316,9 @@ object AtmosRunner {
     success
   }
 
-  object NullOutputStream extends java.io.OutputStream {
-    override def close(): Unit = ()
-    override def flush(): Unit = ()
-    override def write(b: Array[Byte]) = ()
-    override def write(b: Array[Byte], off: Int, len: Int) = ()
-    override def write(b: Int) = ()
+  object DevNullLogger extends Logger {
+    def trace(t: => Throwable): Unit = ()
+    def success(message: => String): Unit = ()
+    def log(level: Level.Value, message: => String): Unit = ()
   }
 }
