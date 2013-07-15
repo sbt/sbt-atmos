@@ -12,7 +12,7 @@ This plugin requires sbt 0.12.
 Add the sbt-atmos plugin to `project/plugins.sbt`. For example:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-M4")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.1.0-M5")
 ```
 
 Add the sbt-atmos settings to the project. For a `.sbt` build, add a line with:
@@ -164,7 +164,7 @@ author. Before we can accept pull requests, you will need to agree to the
 
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
-[sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.1.0-M4/sample/abc
+[sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.1.0-M5/sample/abc
 [config]: https://github.com/typesafehub/config
 [documentation]: http://resources.typesafe.com/docs/console
 [support]: http://support.typesafe.com
