@@ -128,7 +128,7 @@ application to trace.
 More Information
 ----------------
 
-For more information see the [documentation] for the full production version of
+For more information see the [documentation] for the developer version of
 Typesafe Console.
 
 
