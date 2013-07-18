@@ -10,7 +10,7 @@ import java.net.URI
 object SbtAtmos extends Plugin {
   import atmos.AtmosRunner._
 
-  val AtmosVersion = "1.2.0-M6"
+  val AtmosVersion = "1.2.0"
 
   val Atmos = config("atmos") hide
 
@@ -57,7 +57,7 @@ object SbtAtmos extends Plugin {
   lazy val atmosSettings: Seq[Setting[_]] = inConfig(Atmos)(atmosScopedSettings) ++ atmosUnscopedSettings
 
   def atmosScopedSettings: Seq[Setting[_]] = Seq(
-    atmosVersion := "1.2.0-M6",
+    atmosVersion := AtmosVersion,
     aspectjVersion := "1.7.2",
 
     atmosPort := selectPort(8660),
