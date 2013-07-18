@@ -68,10 +68,10 @@ To manually or explicitly specify the trace dependency, select an appropriate
 dependency to include from:
 
 ```scala
-"com.typesafe.atmos" % "trace-akka-2.0.5"           % "1.2.0-M6"
-"com.typesafe.atmos" % "trace-akka-2.1.4"           % "1.2.0-M6"
-"com.typesafe.atmos" % "trace-akka-2.2.0_2.10"      % "1.2.0-M6"
-"com.typesafe.atmos" % "trace-akka-2.2.0_2.11.0-M3" % "1.2.0-M6"
+"com.typesafe.atmos" % "trace-akka-2.0.5"           % "1.2.0"
+"com.typesafe.atmos" % "trace-akka-2.1.4"           % "1.2.0"
+"com.typesafe.atmos" % "trace-akka-2.2.0_2.10"      % "1.2.0"
+"com.typesafe.atmos" % "trace-akka-2.2.0_2.11.0-M3" % "1.2.0"
 ```
 
 
