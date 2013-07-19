@@ -91,6 +91,9 @@ To run a specific main class:
 
     atmos:run-main org.something.MainClass
 
+**Note:** *Your application will run in a forked jvm. See the
+[sbt documentation on forking][forked] for more information.*
+
 
 Trace configuration
 -------------------
@@ -120,9 +123,9 @@ sampling in Atmos := Seq(
 )
 ```
 
-**Note**: The default settings are to collect all traces for all actors.
+**Note:** *The default settings are to collect all traces for all actors.
 For applications with heavier loads you should select specific parts of the
-application to trace.
+application to trace.*
 
 
 More Information
@@ -165,6 +168,7 @@ author. Before we can accept pull requests, you will need to agree to the
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
 [sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.1.0/sample/abc
+[forked]: http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
 [config]: https://github.com/typesafehub/config
 [documentation]: http://resources.typesafe.com/docs/console
 [support]: http://support.typesafe.com
