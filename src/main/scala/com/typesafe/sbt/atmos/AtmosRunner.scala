@@ -212,6 +212,11 @@ object AtmosRunner {
   class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       import atmosInputs._
+
+      if (traceClasspath.isEmpty) {
+        log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
+      }
+
       log.info("Starting Atmos and Typesafe Console ...")
 
       val devNull = Some(LoggedOutput(DevNullLogger))
