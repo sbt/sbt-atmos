@@ -47,20 +47,33 @@ object AtmosRunner {
     "com.typesafe.console" % "console-solo" % version % AtmosConsole.name
   )
 
-  def traceDependencies(dependencies: Seq[ModuleID], version: String, scalaVersion: String) = {
+  def selectTraceDependencies(dependencies: Seq[ModuleID], atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
     if (containsTrace(dependencies)) Seq.empty[ModuleID]
-    else if (containsAkka(dependencies, "2.0.")) traceAkkaDependencies(Akka20Version, version, CrossVersion.Disabled)
-    else if (containsAkka(dependencies, "2.1.")) traceAkkaDependencies(Akka21Version, version, CrossVersion.Disabled)
-    else if (containsAkka(dependencies, "2.2.")) traceAkkaDependencies(Akka22Version, version, akka22CrossVersion(scalaVersion))
-    else Seq.empty[ModuleID]
+    else findAkkaVersion(dependencies) match {
+      case Some(akkaVersion) => traceDependencies(akkaVersion)(atmosVersion, scalaVersion)
+      case None              => Seq.empty[ModuleID]
+    }
   }
 
   def containsTrace(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
     module.organization == "com.typesafe.atmos" && module.name.startsWith("trace-akka")
   }
 
-  def containsAkka(dependencies: Seq[ModuleID], versionPrefix: String): Boolean = dependencies exists { module =>
-    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-") && module.revision.startsWith(versionPrefix)
+  def findAkkaVersion(dependencies: Seq[ModuleID]): Option[String] = dependencies find { module =>
+    module.organization == "com.typesafe.akka" && module.name.startsWith("akka-")
+  } map (_.revision)
+
+
+  def traceDependencies(akkaVersion: String)(atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
+    val (supportedAkkaVersion, crossVersion) = selectAkkaVersion(akkaVersion, scalaVersion)
+    traceAkkaDependencies(supportedAkkaVersion, atmosVersion, crossVersion)
+  }
+
+  def selectAkkaVersion(akkaVersion: String, scalaVersion: String): (String, CrossVersion) = {
+    if      (akkaVersion startsWith "2.0.") (Akka20Version, CrossVersion.Disabled)
+    else if (akkaVersion startsWith "2.1.") (Akka21Version, CrossVersion.Disabled)
+    else if (akkaVersion startsWith "2.2.") (Akka22Version, akka22CrossVersion(scalaVersion))
+    else    sys.error("Akka version is not supported by Atmos: " + akkaVersion)
   }
 
   def akka22CrossVersion(scalaVersion: String) = {

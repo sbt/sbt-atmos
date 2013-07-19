@@ -119,6 +119,10 @@ object SbtAtmos extends Plugin {
   )
 
   def autoTraceDependencies = {
-    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(traceDependencies)
+    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(selectTraceDependencies)
+  }
+
+  def traceAkka(akkaVersion: String) = {
+    libraryDependencies <++= (atmosVersion in Atmos, scalaVersion)(traceDependencies(akkaVersion))
   }
 }
