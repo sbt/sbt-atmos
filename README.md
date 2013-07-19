@@ -23,8 +23,9 @@ atmosSettings
 
 **Note:** *These settings need to come after the Akka library dependency
 settings, to have the appropriate trace dependencies automatically added based
-on the Akka version being used. Otherwise an extra dependency will need to be
-added manually.*
+on the Akka version being used. Otherwise an extra setting will need to be
+added, specifying the Akka version to use. See the section on trace
+dependencies below.*
 
 For a full `.scala` build, add these settings to your project settings, after
 the Akka library dependencies:
@@ -64,14 +65,18 @@ The sbt-atmos plugin will automatically add a library dependency which includes
 Aspectj aspects for the Akka dependency being used, providing the settings are
 added as described above.
 
-To manually or explicitly specify the trace dependency, select an appropriate
-dependency to include from:
+To explicitly specify the trace dependency, use the `traceAkka` helper method
+and pass the Akka version being used. For example, add a setting like this to
+your build:
 
 ```scala
-"com.typesafe.atmos" % "trace-akka-2.0.5"           % "1.2.0"
-"com.typesafe.atmos" % "trace-akka-2.1.4"           % "1.2.0"
-"com.typesafe.atmos" % "trace-akka-2.2.0_2.10"      % "1.2.0"
-"com.typesafe.atmos" % "trace-akka-2.2.0_2.11.0-M3" % "1.2.0"
+traceAkka("2.2.0")
+```
+
+The full path to this method is:
+
+```scala
+com.typesafe.sbt.SbtAtmos.traceAkka
 ```
 
 
