@@ -12,7 +12,7 @@ object SbtAtmos extends Plugin {
 
   val AtmosVersion = "1.2.0"
 
-  val Atmos = config("atmos") hide
+  val Atmos = config("atmos").extend(Compile)
 
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
@@ -67,7 +67,7 @@ object SbtAtmos extends Plugin {
     atmosOptions := Seq("-Xms512m", "-Xmx512m"),
     consoleOptions := Seq("-Xms512m", "-Xmx512m"),
 
-    atmosClasspath <<= managedClasspath(Atmos),
+    atmosClasspath <<= managedClasspath(AtmosDev),
     consoleClasspath <<= managedClasspath(AtmosConsole),
     traceClasspath <<= managedClasspath(AtmosTrace),
     aspectjWeaver <<= findAspectjWeaver,
@@ -107,7 +107,7 @@ object SbtAtmos extends Plugin {
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
-    ivyConfigurations ++= Seq(Atmos, AtmosConsole, AtmosTrace, AtmosWeave, AtmosSigar),
+    ivyConfigurations ++= Seq(AtmosDev, AtmosConsole, AtmosTrace, AtmosWeave, AtmosSigar),
 
     resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
 

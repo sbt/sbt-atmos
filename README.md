@@ -39,7 +39,7 @@ For example:
 ```scala
 import sbt._
 import sbt.Keys._
-import com.typesafe.sbt.SbtAtmos.atmosSettings
+import com.typesafe.sbt.SbtAtmos.{ Atmos, atmosSettings }
 
 object SampleBuild extends Build {
   lazy val sample = Project(
@@ -50,7 +50,9 @@ object SampleBuild extends Build {
       scalaVersion := "2.10.2",
       libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
     )
-  ) settings (atmosSettings: _*)
+  )
+  .configs(Atmos)
+  .settings(atmosSettings: _*)
 }
 ```
 

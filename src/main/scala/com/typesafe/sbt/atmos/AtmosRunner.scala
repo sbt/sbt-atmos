@@ -18,10 +18,11 @@ object AtmosRunner {
   val Akka21Version = "2.1.4"
   val Akka22Version = "2.2.0"
 
-  val AtmosConsole = config("atmos-console") hide
-  val AtmosTrace = config("atmos-trace") hide
-  val AtmosWeave = config("atmos-weave") hide
-  val AtmosSigar = config("atmos-sigar") hide
+  val AtmosDev     = config("atmos-dev").hide
+  val AtmosConsole = config("atmos-console").hide
+  val AtmosTrace   = config("atmos-trace").hide
+  val AtmosWeave   = config("atmos-weave").hide
+  val AtmosSigar   = config("atmos-sigar").hide
 
   case class AtmosInputs(
     atmosPort: Int,
@@ -40,7 +41,7 @@ object AtmosRunner {
     runListeners: Seq[URI => Unit])
 
   def atmosDependencies(version: String) = Seq(
-    "com.typesafe.atmos" % "atmos-dev" % version % Atmos.name
+    "com.typesafe.atmos" % "atmos-dev" % version % AtmosDev.name
   )
 
   def consoleDependencies(version: String) = Seq(
