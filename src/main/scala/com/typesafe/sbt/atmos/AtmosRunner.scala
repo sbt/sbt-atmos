@@ -18,9 +18,10 @@ object AtmosRunner {
   val Akka21Version = "2.1.4"
   val Akka22Version = "2.2.0"
 
+  val AtmosTraceCompile = config("atmos-trace-compile").extend(Compile).hide
+
   val AtmosDev     = config("atmos-dev").hide
   val AtmosConsole = config("atmos-console").hide
-  val AtmosTrace   = config("atmos-trace").hide
   val AtmosWeave   = config("atmos-weave").hide
   val AtmosSigar   = config("atmos-sigar").hide
 
@@ -82,7 +83,7 @@ object AtmosRunner {
   }
 
   def traceAkkaDependencies(akkaVersion: String, atmosVersion: String, crossVersion: CrossVersion) = Seq(
-    "com.typesafe.atmos" % ("trace-akka-" + akkaVersion) % atmosVersion % AtmosTrace.name cross crossVersion
+    "com.typesafe.atmos" % ("trace-akka-" + akkaVersion) % atmosVersion % AtmosTraceCompile.name cross crossVersion
   )
 
   def weaveDependencies(version: String) = Seq(
@@ -95,6 +96,11 @@ object AtmosRunner {
 
   def managedClasspath(config: Configuration): Initialize[Task[Classpath]] =
     (classpathTypes, update) map { (types, report) => Classpaths.managedJars(config, types, report) }
+
+  def traceFullClasspath(config: Configuration): Initialize[Task[Classpath]] =
+    (traceClasspath in config, internalDependencyClasspath in config, unmanagedClasspath in config, exportedProducts in config) map {
+      (trace, internal, unmanaged, products) => (trace ++ internal ++ unmanaged ++ products).distinct
+    }
 
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
     update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
@@ -214,7 +220,7 @@ object AtmosRunner {
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       import atmosInputs._
 
-      if (traceClasspath.isEmpty) {
+      if (!traceClasspath.exists(_.data.name.startsWith("trace-akka-"))) {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
@@ -252,7 +258,7 @@ object AtmosRunner {
 
       try {
         log.info("Running " + mainClass + " " + options.mkString(" "))
-        val cp = (traceConfig +: traceClasspath.files) ++ classpath
+        val cp = traceConfig +: traceClasspath.files
         val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
         val exitCode = forkRun.run(mainClass, cp, options).exitValue()
         forkRun.cancelShutdownHook()

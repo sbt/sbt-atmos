@@ -28,6 +28,7 @@ object SbtAtmos extends Plugin {
     val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
     val consoleClasspath = TaskKey[Classpath]("console-classpath")
     val traceClasspath = TaskKey[Classpath]("trace-classpath")
+    val traceCompileClasspath = TaskKey[Classpath]("trace-compile-classpath")
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
 
     val atmosDirectory = SettingKey[File]("atmos-directory")
@@ -69,7 +70,8 @@ object SbtAtmos extends Plugin {
 
     atmosClasspath <<= managedClasspath(AtmosDev),
     consoleClasspath <<= managedClasspath(AtmosConsole),
-    traceClasspath <<= managedClasspath(AtmosTrace),
+    traceClasspath in Compile <<= managedClasspath(AtmosTraceCompile),
+    traceCompileClasspath <<= traceFullClasspath(Compile),
     aspectjWeaver <<= findAspectjWeaver,
 
     atmosDirectory <<= target / "atmos",
@@ -96,7 +98,7 @@ object SbtAtmos extends Plugin {
 
     atmosInputs <<= (
       atmosPort, consolePort, atmosOptions, consoleOptions,
-      atmosClasspath, consoleClasspath, traceClasspath, aspectjWeaver,
+      atmosClasspath, consoleClasspath, traceCompileClasspath, aspectjWeaver,
       atmosDirectory, atmosConfig, consoleConfig, traceConfig, sigarLibs,
       atmosRunListeners
     ) map AtmosInputs,
@@ -107,7 +109,7 @@ object SbtAtmos extends Plugin {
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
-    ivyConfigurations ++= Seq(AtmosDev, AtmosConsole, AtmosTrace, AtmosWeave, AtmosSigar),
+    ivyConfigurations ++= Seq(AtmosDev, AtmosConsole, AtmosTraceCompile, AtmosWeave, AtmosSigar),
 
     resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
 
