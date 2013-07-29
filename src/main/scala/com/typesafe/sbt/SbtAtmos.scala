@@ -25,11 +25,14 @@ object SbtAtmos extends Plugin {
     val atmosOptions = TaskKey[Seq[String]]("atmos-options")
     val consoleOptions = TaskKey[Seq[String]]("console-options")
 
+    val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
+    val sigarLibs = TaskKey[Option[File]]("sigar-libs")
+    val traceOptions = TaskKey[Seq[String]]("trace-options")
+
     val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
     val consoleClasspath = TaskKey[Classpath]("console-classpath")
     val traceClasspath = TaskKey[Classpath]("trace-classpath")
     val traceCompileClasspath = TaskKey[Classpath]("trace-compile-classpath")
-    val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
 
     val atmosDirectory = SettingKey[File]("atmos-directory")
     val atmosConfigDirectory = SettingKey[File]("atmos-config-directory")
@@ -48,7 +51,6 @@ object SbtAtmos extends Plugin {
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
 
-    val sigarLibs = TaskKey[Option[File]]("sigar-libs")
     val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
@@ -68,11 +70,14 @@ object SbtAtmos extends Plugin {
     atmosOptions := Seq("-Xms512m", "-Xmx512m"),
     consoleOptions := Seq("-Xms512m", "-Xmx512m"),
 
+    aspectjWeaver <<= findAspectjWeaver,
+    sigarLibs <<= unpackSigar,
+    traceOptions <<= (javaOptions in run, aspectjWeaver, sigarLibs) map addTraceOptions,
+
     atmosClasspath <<= managedClasspath(AtmosDev),
     consoleClasspath <<= managedClasspath(AtmosConsole),
     traceClasspath in Compile <<= managedClasspath(AtmosTraceCompile),
     traceCompileClasspath <<= traceFullClasspath(Compile),
-    aspectjWeaver <<= findAspectjWeaver,
 
     atmosDirectory <<= target / "atmos",
     atmosConfigDirectory <<= atmosDirectory / "conf",
@@ -91,15 +96,14 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
-    sigarLibs <<= unpackSigar,
-
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
 
     atmosInputs <<= (
-      atmosPort, consolePort, atmosOptions, consoleOptions,
-      atmosClasspath, consoleClasspath, traceCompileClasspath, aspectjWeaver,
-      atmosDirectory, atmosConfig, consoleConfig, traceConfig, sigarLibs,
+      atmosPort, consolePort,
+      atmosOptions, consoleOptions, traceOptions,
+      atmosClasspath, consoleClasspath, traceCompileClasspath,
+      atmosDirectory, atmosConfig, consoleConfig, traceConfig,
       atmosRunListeners
     ) map AtmosInputs,
 
