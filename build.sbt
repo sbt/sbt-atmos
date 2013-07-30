@@ -15,4 +15,8 @@ publishTo <<= (version) { v =>
   Some(Resolver.url(name, url(repo))(Resolver.ivyStylePatterns))
 }
 
-ScriptedPlugin.scriptedSettings
+crossBuildingSettings
+
+CrossBuilding.crossSbtVersions := Seq("0.12", "0.13")
+
+CrossBuilding.scriptedSettings
