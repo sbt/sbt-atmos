@@ -22,8 +22,8 @@ object SbtAtmos extends Plugin {
     val consolePort = TaskKey[Int]("console-port")
     val tracePort = TaskKey[Int]("trace-port")
 
-    val atmosOptions = TaskKey[Seq[String]]("atmos-options")
-    val consoleOptions = TaskKey[Seq[String]]("console-options")
+    val atmosJvmOptions = TaskKey[Seq[String]]("atmos-jvm-options")
+    val consoleJvmOptions = TaskKey[Seq[String]]("console-jvm-options")
 
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
@@ -51,6 +51,10 @@ object SbtAtmos extends Plugin {
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
 
+    val atmosPorts = TaskKey[AtmosPorts]("atmos-ports")
+    val atmosOptions = TaskKey[AtmosOptions]("atmos-options")
+    val atmosClasspaths = TaskKey[AtmosClasspaths]("atmos-classpaths")
+    val atmosConfigs = TaskKey[AtmosConfigs]("atmos-configs")
     val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
@@ -67,8 +71,8 @@ object SbtAtmos extends Plugin {
     consolePort := selectPort(9900),
     tracePort := selectPort(28660),
 
-    atmosOptions := Seq("-Xms512m", "-Xmx512m"),
-    consoleOptions := Seq("-Xms512m", "-Xmx512m"),
+    atmosJvmOptions := Seq("-Xms512m", "-Xmx512m"),
+    consoleJvmOptions := Seq("-Xms512m", "-Xmx512m"),
 
     aspectjWeaver <<= findAspectjWeaver,
     sigarLibs <<= unpackSigar,
@@ -96,16 +100,15 @@ object SbtAtmos extends Plugin {
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
 
+    atmosPorts <<= (atmosPort, consolePort) map AtmosPorts,
+    atmosOptions <<= (atmosJvmOptions, consoleJvmOptions, traceOptions) map AtmosOptions,
+    atmosClasspaths <<= (atmosClasspath, consoleClasspath, traceCompileClasspath) map AtmosClasspaths,
+    atmosConfigs <<= (atmosConfig, consoleConfig, traceConfig) map AtmosConfigs,
+
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
 
-    atmosInputs <<= (
-      atmosPort, consolePort,
-      atmosOptions, consoleOptions, traceOptions,
-      atmosClasspath, consoleClasspath, traceCompileClasspath,
-      atmosDirectory, atmosConfig, consoleConfig, traceConfig,
-      atmosRunListeners
-    ) map AtmosInputs,
+    atmosInputs <<= (atmosPorts, atmosOptions, atmosClasspaths, atmosDirectory, atmosConfigs, atmosRunListeners) map AtmosInputs,
 
     inScope(Scope(This, Select(Atmos), Select(run.key), This))(Seq(runner <<= atmosRunner)).head,
     run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run),

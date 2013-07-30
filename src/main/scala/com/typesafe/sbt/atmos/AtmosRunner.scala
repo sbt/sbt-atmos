@@ -27,19 +27,17 @@ object AtmosRunner {
   val AtmosSigar   = config("atmos-sigar").hide
 
   case class AtmosInputs(
-    atmosPort: Int,
-    consolePort: Int,
-    atmosOptions: Seq[String],
-    consoleOptions: Seq[String],
-    traceOptions: Seq[String],
-    atmosClasspath: Classpath,
-    consoleClasspath: Classpath,
-    traceClasspath: Classpath,
+    ports: AtmosPorts,
+    options: AtmosOptions,
+    classpaths: AtmosClasspaths,
     atmosDirectory: File,
-    atmosConfig: File,
-    consoleConfig: File,
-    traceConfig: File,
+    configs: AtmosConfigs,
     runListeners: Seq[URI => Unit])
+
+  case class AtmosPorts(atmos: Int, console: Int)
+  case class AtmosOptions(atmos: Seq[String], console: Seq[String], trace: Seq[String])
+  case class AtmosClasspaths(atmos: Classpath, console: Classpath, trace: Classpath)
+  case class AtmosConfigs(atmos: File, console: File, trace: File)
 
   def addTraceOptions(options: Seq[String], aspectjWeaver: Option[File], sigarLibs: Option[File]) = {
     val javaAgent = aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
@@ -224,15 +222,13 @@ object AtmosRunner {
   def atmosRunner: Initialize[Task[ScalaRun]] =
     (scalaInstance, baseDirectory, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
       (si, base, strategy, javaHomeDir, connectIn, inputs) =>
-        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), inputs.traceOptions, connectIn)
+        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), inputs.options.trace, connectIn)
         new AtmosRun(forkConfig, inputs)
     }
 
-  class AtmosRun(forkConfig: ForkScalaRun, atmosInputs: AtmosInputs) extends ScalaRun {
-    def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
-      import atmosInputs._
-
-      if (!traceClasspath.exists(_.data.name.startsWith("trace-akka-"))) {
+  class AtmosRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends ScalaRun {
+    def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {
+      if (!inputs.classpaths.trace.exists(_.data.name.startsWith("trace-akka-"))) {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
@@ -241,8 +237,9 @@ object AtmosRunner {
       val devNull = Some(LoggedOutput(DevNullLogger))
 
       val atmosMain = "com.typesafe.atmos.AtmosDev"
-      val atmosCp = atmosConfig +: atmosClasspath.files
-      val atmosJVMOptions = atmosOptions ++ Seq("-Dquery.http.port=" + atmosPort)
+      val atmosCp = inputs.configs.atmos +: inputs.classpaths.atmos.files
+      val atmosPort = inputs.ports.atmos
+      val atmosJVMOptions = inputs.options.atmos ++ Seq("-Dquery.http.port=" + atmosPort)
       val atmosForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
       val atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
@@ -253,8 +250,9 @@ object AtmosRunner {
       }
 
       val consoleMain = "play.core.server.NettyServer"
-      val consoleCp = consoleConfig +: consoleClasspath.files
-      val consoleJVMOptions = consoleOptions ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
+      val consoleCp = inputs.configs.console +: inputs.classpaths.console.files
+      val consolePort = inputs.ports.console
+      val consoleJVMOptions = inputs.options.console ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
       val consoleForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
       val console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
@@ -266,13 +264,13 @@ object AtmosRunner {
       }
 
       val consoleUri = new URI("http://localhost:" + consolePort)
-      for (listener <- runListeners) listener(consoleUri)
+      for (listener <- inputs.runListeners) listener(consoleUri)
 
       try {
-        log.info("Running " + mainClass + " " + options.mkString(" "))
-        val cp = traceConfig +: traceClasspath.files
+        log.info("Running " + mainClass + " " + arguments.mkString(" "))
+        val cp = inputs.configs.trace +: inputs.classpaths.trace.files
         val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
-        val exitCode = forkRun.run(mainClass, cp, options).exitValue()
+        val exitCode = forkRun.run(mainClass, cp, arguments).exitValue()
         forkRun.cancelShutdownHook()
         if (exitCode == 0) None
         else Some("Nonzero exit code returned from runner: " + exitCode)
