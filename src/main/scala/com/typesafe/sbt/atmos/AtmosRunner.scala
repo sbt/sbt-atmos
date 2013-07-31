@@ -39,20 +39,11 @@ object AtmosRunner {
   case class AtmosClasspaths(atmos: Classpath, console: Classpath, trace: Classpath)
   case class AtmosConfigs(atmos: File, console: File, trace: File)
 
-  def addTraceOptions(options: Seq[String], aspectjWeaver: Option[File], sigarLibs: Option[File]) = {
+  def traceJavaOptions(aspectjWeaver: Option[File], sigarLibs: Option[File]): Seq[String] = {
     val javaAgent = aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
     val aspectjOptions = Seq("-Dorg.aspectj.tracing.factory=default")
-    javaAgent ++ aspectjOptions ++ addSigarToLibraryPath(options, sigarLibs)
-  }
-
-  def addSigarToLibraryPath(options: Seq[String], sigarLibs: Option[File]) = {
-    val prefix = "-Djava.library.path="
-    val (property, remainingOptions) = options partition (_ startsWith prefix)
-    val existingPath = property map (_ substring prefix.length)
-    val pathElements = existingPath flatMap IO.pathSplit
-    val sigar = sigarLibs.toSeq map (_.getAbsolutePath)
-    val libraryPath = prefix + (pathElements ++ sigar).mkString(pathSeparator)
-    libraryPath +: remainingOptions
+    val sigarPath = sigarLibs.toSeq map { s => "-Dorg.hyperic.sigar.path=" + s.getAbsolutePath }
+    javaAgent ++ aspectjOptions ++ sigarPath
   }
 
   def atmosDependencies(version: String) = Seq(
@@ -220,9 +211,9 @@ object AtmosRunner {
   }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
-    (scalaInstance, baseDirectory, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
-      (si, base, strategy, javaHomeDir, connectIn, inputs) =>
-        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), inputs.options.trace, connectIn)
+    (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
+      (si, base, options, strategy, javaHomeDir, connectIn, inputs) =>
+        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), options ++ inputs.options.trace, connectIn)
         new AtmosRun(forkConfig, inputs)
     }
 

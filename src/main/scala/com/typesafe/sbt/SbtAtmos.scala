@@ -76,7 +76,7 @@ object SbtAtmos extends Plugin {
 
     aspectjWeaver <<= findAspectjWeaver,
     sigarLibs <<= unpackSigar,
-    traceOptions <<= (javaOptions in run, aspectjWeaver, sigarLibs) map addTraceOptions,
+    traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
     atmosClasspath <<= managedClasspath(AtmosDev),
     consoleClasspath <<= managedClasspath(AtmosConsole),
