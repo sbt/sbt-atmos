@@ -23,6 +23,7 @@ object AtmosRunner {
   val Akka22Version = "2.2.0"
 
   val AtmosTraceCompile = config("atmos-trace-compile").extend(Configurations.RuntimeInternal).hide
+  val AtmosTraceTest    = config("atmos-trace-test").extend(AtmosTraceCompile, Configurations.TestInternal).hide
 
   val AtmosDev     = config("atmos-dev").hide
   val AtmosConsole = config("atmos-console").hide
@@ -32,6 +33,10 @@ object AtmosRunner {
   case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
   case class AtmosInputs(atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
+
+  def targetName(config: Configuration) = {
+    "atmos" + (if (config.name == "compile") "" else "-" + config.name)
+  }
 
   def traceJavaOptions(aspectjWeaver: Option[File], sigarLibs: Option[File]): Seq[String] = {
     val javaAgent = aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
@@ -185,7 +190,7 @@ object AtmosRunner {
   }
 
   def writeConfig(name: String, configKey: TaskKey[String], logbackKey: SettingKey[String]): Initialize[Task[File]] =
-    (atmosConfigDirectory in Atmos, configKey, logbackKey) map { (confDir, conf, logback) =>
+    (atmosConfigDirectory, configKey, logbackKey) map { (confDir, conf, logback) =>
       val dir = confDir / name
       val confFile = dir / "application.conf"
       val logbackFile = dir / "logback.xml"

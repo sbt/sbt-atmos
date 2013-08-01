@@ -13,6 +13,7 @@ object SbtAtmos extends Plugin {
   val AtmosVersion = "1.2.0"
 
   val Atmos = config("atmos").extend(Compile)
+  val AtmosTest = config("atmos-test").extend(Atmos, Test)
 
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
@@ -52,7 +53,6 @@ object SbtAtmos extends Plugin {
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
     val traceOptions = TaskKey[Seq[String]]("trace-options")
-    val traceCompileClasspath = TaskKey[Classpath]("trace-compile-classpath")
 
     val atmosOptions = TaskKey[AtmosOptions]("atmos-options")
     val consoleOptions = TaskKey[AtmosOptions]("console-options")
@@ -62,13 +62,16 @@ object SbtAtmos extends Plugin {
 
   import AtmosKeys._
 
-  lazy val atmosSettings: Seq[Setting[_]] = inConfig(Atmos)(atmosScopedSettings) ++ atmosUnscopedSettings
+  lazy val atmosSettings: Seq[Setting[_]] =
+    inConfig(Atmos)(atmosScopedSettings(Compile, AtmosTraceCompile)) ++
+    inConfig(AtmosTest)(atmosScopedSettings(Test, AtmosTraceTest)) ++
+    atmosUnscopedSettings
 
-  def atmosScopedSettings: Seq[Setting[_]] = Seq(
+  def atmosScopedSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
     aspectjVersion := "1.7.2",
 
-    atmosDirectory <<= target / "atmos",
+    atmosDirectory <<= target / targetName(extendConfig),
 
     atmosPort := selectPort(8660),
     consolePort := selectPort(9900),
@@ -104,9 +107,9 @@ object SbtAtmos extends Plugin {
     sigarLibs <<= unpackSigar,
     traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
-    atmosManagedClasspath in Compile <<= collectManagedClasspath(AtmosTraceCompile),
-    atmosClasspath in Compile <<= Classpaths.concat(traceConfigClasspath, atmosManagedClasspath in Compile),
-    traceCompileClasspath <<= traceFullClasspath(Compile),
+    atmosManagedClasspath in extendConfig <<= collectManagedClasspath(classpathConfig),
+    atmosClasspath in extendConfig <<= Classpaths.concat(traceConfigClasspath, atmosManagedClasspath in extendConfig),
+    fullClasspath <<= traceFullClasspath(extendConfig),
 
     atmosOptions <<= (atmosPort, atmosJvmOptions, atmosClasspath) map AtmosOptions,
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
@@ -114,15 +117,14 @@ object SbtAtmos extends Plugin {
     atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
     atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs,
 
-    mainClass in run <<= mainClass in run in Compile,
-
+    mainClass in run <<= mainClass in run in extendConfig,
     inTask(run)(Seq(runner <<= atmosRunner)).head,
-    run <<= Defaults.runTask(traceCompileClasspath, mainClass in run, runner in run),
-    runMain <<= Defaults.runMainTask(traceCompileClasspath, runner in run)
+    run <<= Defaults.runTask(fullClasspath, mainClass in run, runner in run),
+    runMain <<= Defaults.runMainTask(fullClasspath, runner in run)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
-    ivyConfigurations ++= Seq(AtmosDev, AtmosConsole, AtmosTraceCompile, AtmosWeave, AtmosSigar),
+    ivyConfigurations ++= Seq(AtmosTraceCompile, AtmosTraceTest, AtmosDev, AtmosConsole, AtmosWeave, AtmosSigar),
 
     resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
 
