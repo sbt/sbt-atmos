@@ -110,8 +110,10 @@ object SbtAtmos extends Plugin {
 
     atmosInputs <<= (atmosPorts, atmosOptions, atmosClasspaths, atmosDirectory, atmosConfigs, atmosRunListeners) map AtmosInputs,
 
+    mainClass in run <<= mainClass in run in Compile,
+
     inScope(Scope(This, Select(Atmos), Select(run.key), This))(Seq(runner <<= atmosRunner)).head,
-    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run in Compile, runner in run),
+    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run, runner in run),
     runMain <<= Defaults.runMainTask(fullClasspath in Runtime, runner in run)
   )
 
