@@ -22,7 +22,7 @@ object AtmosRunner {
   val Akka21Version = "2.1.4"
   val Akka22Version = "2.2.0"
 
-  val AtmosTraceCompile = config("atmos-trace-compile").extend(Compile).hide
+  val AtmosTraceCompile = config("atmos-trace-compile").extend(Configurations.RuntimeInternal).hide
 
   val AtmosDev     = config("atmos-dev").hide
   val AtmosConsole = config("atmos-console").hide
