@@ -7,9 +7,12 @@ package atmos
 import sbt._
 import sbt.Keys._
 import sbt.Project.Initialize
+
 import java.io.File.pathSeparator
-import java.net.URI
+import java.lang.reflect.{ Method, Modifier }
 import java.lang.{ Runtime => JRuntime }
+import java.net.URI
+import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
 object AtmosRunner {
   import SbtAtmos.Atmos
@@ -211,13 +214,42 @@ object AtmosRunner {
   }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
-    (scalaInstance, baseDirectory, javaOptions, outputStrategy, javaHome, connectInput, atmosInputs in Atmos) map {
-      (si, base, options, strategy, javaHomeDir, connectIn, inputs) =>
-        val forkConfig = ForkOptions(javaHomeDir, strategy, si.jars, Some(base), options ++ inputs.options.trace, connectIn)
-        new AtmosRun(forkConfig, inputs)
+    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, sigarLibs, atmosInputs) map {
+      (base, options, strategy, forkRun, javaHomeDir, trap, connectIn, sigar, inputs) =>
+        if (forkRun) {
+          val forkConfig = ForkOptions(javaHomeDir, strategy, Seq.empty, Some(base), options ++ inputs.options.trace, connectIn)
+          new AtmosForkRun(forkConfig, inputs)
+        } else {
+          new AtmosDirectRun(trap, sigar, javaHomeDir, inputs)
+        }
     }
 
-  class AtmosRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends ScalaRun {
+  class AtmosForkRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends AtmosRun(forkConfig.javaHome, inputs) {
+    def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
+      log.info("Running (forked) " + mainClass + " " + options.mkString(" "))
+      log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+      val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
+      val exitCode = forkRun.run(mainClass, classpath, options).exitValue()
+      forkRun.cancelShutdownHook()
+      if (exitCode == 0) None
+      else Some("Nonzero exit code returned from runner: " + exitCode)
+    }
+  }
+
+  class AtmosDirectRun(trapExit: Boolean, sigarLibs: Option[File], javaHome: Option[File], inputs: AtmosInputs) extends AtmosRun(javaHome, inputs) {
+    def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
+      log.info("Running " + mainClass + " " + options.mkString(" "))
+      log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+      System.setProperty("org.aspectj.tracing.factory", "default")
+      sigarLibs foreach { s => System.setProperty("org.hyperic.sigar.path", s.getAbsolutePath) }
+      val loader = new WeavingURLClassLoader(Path.toURLs(classpath), null)
+      (new RunMain(loader, mainClass, options)).run(trapExit, log)
+    }
+  }
+
+  abstract class AtmosRun(javaHome: Option[File], inputs: AtmosInputs) extends ScalaRun {
+    def atmosRun(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String]
+
     def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {
       if (!inputs.classpaths.trace.exists(_.data.name.startsWith("trace-akka-"))) {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
@@ -231,7 +263,7 @@ object AtmosRunner {
       val atmosCp = inputs.configs.atmos +: inputs.classpaths.atmos.files
       val atmosPort = inputs.ports.atmos
       val atmosJVMOptions = inputs.options.atmos ++ Seq("-Dquery.http.port=" + atmosPort)
-      val atmosForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
+      val atmosForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
       val atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
 
@@ -244,7 +276,7 @@ object AtmosRunner {
       val consoleCp = inputs.configs.console +: inputs.classpaths.console.files
       val consolePort = inputs.ports.console
       val consoleJVMOptions = inputs.options.console ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
-      val consoleForkConfig = ForkOptions(javaHome = forkConfig.javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
+      val consoleForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
       val console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
 
@@ -258,13 +290,8 @@ object AtmosRunner {
       for (listener <- inputs.runListeners) listener(consoleUri)
 
       try {
-        log.info("Running " + mainClass + " " + arguments.mkString(" "))
         val cp = inputs.configs.trace +: inputs.classpaths.trace.files
-        val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
-        val exitCode = forkRun.run(mainClass, cp, arguments).exitValue()
-        forkRun.cancelShutdownHook()
-        if (exitCode == 0) None
-        else Some("Nonzero exit code returned from runner: " + exitCode)
+        atmosRun(mainClass, cp, arguments, log)
       } finally {
         atmos.stop()
         console.stop()
@@ -316,6 +343,43 @@ object AtmosRunner {
         JRuntime.getRuntime.removeShutdownHook(shutdownHook)
         shutdownHook = null.asInstanceOf[Thread]
       }
+    }
+  }
+
+  class RunMain(loader: ClassLoader, mainClass: String, options: Seq[String]) {
+    def run(trapExit: Boolean, log: Logger): Option[String] = {
+      if (trapExit) {
+        Run.executeTrapExit(runMain, log)
+      } else {
+        try { runMain; None }
+        catch { case e: Exception => log.trace(e); Some(e.toString) }
+      }
+    }
+
+    def runMain(): Unit = {
+      try {
+        val main = getMainMethod(mainClass, loader)
+        invokeMain(loader, main, options)
+      } catch {
+        case e: java.lang.reflect.InvocationTargetException => throw e.getCause
+      }
+    }
+
+    def getMainMethod(mainClass: String, loader: ClassLoader): Method = {
+      val main = Class.forName(mainClass, true, loader)
+      val method = main.getMethod("main", classOf[Array[String]])
+      val modifiers = method.getModifiers
+      if (!Modifier.isPublic(modifiers)) throw new NoSuchMethodException(mainClass + ".main is not public")
+      if (!Modifier.isStatic(modifiers)) throw new NoSuchMethodException(mainClass + ".main is not static")
+      method
+    }
+
+    def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
+      val currentThread = Thread.currentThread
+      val oldLoader = currentThread.getContextClassLoader()
+      currentThread.setContextClassLoader(loader)
+      try { main.invoke(null, options.toArray[String].asInstanceOf[Array[String]] ) }
+      finally { currentThread.setContextClassLoader(oldLoader) }
     }
   }
 
