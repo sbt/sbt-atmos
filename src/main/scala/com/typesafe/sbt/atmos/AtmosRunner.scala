@@ -39,7 +39,7 @@ object AtmosRunner {
 
   case class AtmosPorts(atmos: Int, console: Int)
   case class AtmosOptions(atmos: Seq[String], console: Seq[String], trace: Seq[String])
-  case class AtmosClasspaths(atmos: Classpath, console: Classpath, trace: Classpath)
+  case class AtmosClasspaths(atmos: Classpath, console: Classpath)
   case class AtmosConfigs(atmos: File, console: File, trace: File)
 
   def traceJavaOptions(aspectjWeaver: Option[File], sigarLibs: Option[File]): Seq[String] = {
@@ -251,7 +251,7 @@ object AtmosRunner {
     def atmosRun(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String]
 
     def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {
-      if (!inputs.classpaths.trace.exists(_.data.name.startsWith("trace-akka-"))) {
+      if (!classpath.exists(_.name.startsWith("trace-akka-"))) {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
@@ -290,7 +290,7 @@ object AtmosRunner {
       for (listener <- inputs.runListeners) listener(consoleUri)
 
       try {
-        val cp = inputs.configs.trace +: inputs.classpaths.trace.files
+        val cp = inputs.configs.trace +: classpath
         atmosRun(mainClass, cp, arguments, log)
       } finally {
         atmos.stop()

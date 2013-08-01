@@ -102,7 +102,7 @@ object SbtAtmos extends Plugin {
 
     atmosPorts <<= (atmosPort, consolePort) map AtmosPorts,
     atmosOptions <<= (atmosJvmOptions, consoleJvmOptions, traceOptions) map AtmosOptions,
-    atmosClasspaths <<= (atmosClasspath, consoleClasspath, traceCompileClasspath) map AtmosClasspaths,
+    atmosClasspaths <<= (atmosClasspath, consoleClasspath) map AtmosClasspaths,
     atmosConfigs <<= (atmosConfig, consoleConfig, traceConfig) map AtmosConfigs,
 
     atmosRunListeners := Seq.empty,
@@ -113,8 +113,8 @@ object SbtAtmos extends Plugin {
     mainClass in run <<= mainClass in run in Compile,
 
     inScope(Scope(This, Select(Atmos), Select(run.key), This))(Seq(runner <<= atmosRunner)).head,
-    run <<= Defaults.runTask(fullClasspath in Runtime, mainClass in run, runner in run),
-    runMain <<= Defaults.runMainTask(fullClasspath in Runtime, runner in run)
+    run <<= Defaults.runTask(traceCompileClasspath, mainClass in run, runner in run),
+    runMain <<= Defaults.runMainTask(traceCompileClasspath, runner in run)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(
