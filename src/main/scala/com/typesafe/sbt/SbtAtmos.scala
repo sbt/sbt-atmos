@@ -17,32 +17,30 @@ object SbtAtmos extends Plugin {
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
     val aspectjVersion = SettingKey[String]("aspectj-version")
+    val atmosDirectory = SettingKey[File]("atmos-directory")
 
     val atmosPort = TaskKey[Int]("atmos-port")
     val consolePort = TaskKey[Int]("console-port")
     val tracePort = TaskKey[Int]("trace-port")
 
     val atmosJvmOptions = TaskKey[Seq[String]]("atmos-jvm-options")
-    val consoleJvmOptions = TaskKey[Seq[String]]("console-jvm-options")
-
-    val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
-    val sigarLibs = TaskKey[Option[File]]("sigar-libs")
-    val traceOptions = TaskKey[Seq[String]]("trace-options")
-
-    val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
-    val consoleClasspath = TaskKey[Classpath]("console-classpath")
-    val traceClasspath = TaskKey[Classpath]("trace-classpath")
-    val traceCompileClasspath = TaskKey[Classpath]("trace-compile-classpath")
-
-    val atmosDirectory = SettingKey[File]("atmos-directory")
     val atmosConfigDirectory = SettingKey[File]("atmos-config-directory")
     val atmosLogDirectory = SettingKey[File]("atmos-log-directory")
     val atmosConfigString = TaskKey[String]("atmos-config-string")
     val atmosLogbackString = SettingKey[String]("atmos-logback-string")
     val atmosConfig = TaskKey[File]("atmos-config")
+    val atmosConfigClasspath = TaskKey[Classpath]("atmos-config-classpath")
+    val atmosManagedClasspath = TaskKey[Classpath]("atmos-managed-classpath")
+    val atmosClasspath = TaskKey[Classpath]("atmos-classpath")
+
+    val consoleJvmOptions = TaskKey[Seq[String]]("console-jvm-options")
     val consoleConfigString = TaskKey[String]("console-config-string")
     val consoleLogbackString = SettingKey[String]("console-logback-string")
     val consoleConfig = TaskKey[File]("console-config")
+    val consoleConfigClasspath = TaskKey[Classpath]("console-config-classpath")
+    val consoleManagedClasspath = TaskKey[Classpath]("console-managed-classpath")
+    val consoleClasspath = TaskKey[Classpath]("console-classpath")
+
     val traceable = SettingKey[Seq[(String, Boolean)]]("traceable")
     val traceableConfigString = SettingKey[String]("traceable-config-string")
     val sampling = SettingKey[Seq[(String, Int)]]("sampling")
@@ -50,11 +48,14 @@ object SbtAtmos extends Plugin {
     val traceConfigString = TaskKey[String]("trace-config-string")
     val traceLogbackString = SettingKey[String]("trace-logback-string")
     val traceConfig = TaskKey[File]("trace-config")
+    val traceConfigClasspath = TaskKey[Classpath]("trace-config-classpath")
+    val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
+    val sigarLibs = TaskKey[Option[File]]("sigar-libs")
+    val traceOptions = TaskKey[Seq[String]]("trace-options")
+    val traceCompileClasspath = TaskKey[Classpath]("trace-compile-classpath")
 
-    val atmosPorts = TaskKey[AtmosPorts]("atmos-ports")
     val atmosOptions = TaskKey[AtmosOptions]("atmos-options")
-    val atmosClasspaths = TaskKey[AtmosClasspaths]("atmos-classpaths")
-    val atmosConfigs = TaskKey[AtmosConfigs]("atmos-configs")
+    val consoleOptions = TaskKey[AtmosOptions]("console-options")
     val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
   }
@@ -67,31 +68,30 @@ object SbtAtmos extends Plugin {
     atmosVersion := AtmosVersion,
     aspectjVersion := "1.7.2",
 
+    atmosDirectory <<= target / "atmos",
+
     atmosPort := selectPort(8660),
     consolePort := selectPort(9900),
     tracePort := selectPort(28660),
 
     atmosJvmOptions := Seq("-Xms512m", "-Xmx512m"),
-    consoleJvmOptions := Seq("-Xms512m", "-Xmx512m"),
-
-    aspectjWeaver <<= findAspectjWeaver,
-    sigarLibs <<= unpackSigar,
-    traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
-
-    atmosClasspath <<= managedClasspath(AtmosDev),
-    consoleClasspath <<= managedClasspath(AtmosConsole),
-    traceClasspath in Compile <<= managedClasspath(AtmosTraceCompile),
-    traceCompileClasspath <<= traceFullClasspath(Compile),
-
-    atmosDirectory <<= target / "atmos",
     atmosConfigDirectory <<= atmosDirectory / "conf",
     atmosLogDirectory <<= atmosDirectory / "log",
     atmosConfigString <<= tracePort map defaultAtmosConfig,
     atmosLogbackString <<= defaultLogbackConfig("atmos"),
     atmosConfig <<= writeConfig("atmos", atmosConfigString, atmosLogbackString),
+    atmosConfigClasspath <<= atmosConfig map createClasspath,
+    atmosManagedClasspath <<= collectManagedClasspath(AtmosDev),
+    atmosClasspath <<= Classpaths.concat(atmosConfigClasspath, atmosManagedClasspath),
+
+    consoleJvmOptions := Seq("-Xms512m", "-Xmx512m"),
     consoleConfigString <<= (name, atmosPort) map defaultConsoleConfig,
     consoleLogbackString <<= defaultLogbackConfig("console"),
     consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
+    consoleConfigClasspath <<= consoleConfig map createClasspath,
+    consoleManagedClasspath <<= collectManagedClasspath(AtmosConsole),
+    consoleClasspath <<= Classpaths.concat(consoleConfigClasspath, consoleManagedClasspath),
+
     traceable := Seq("*" -> true),
     traceableConfigString <<= traceable apply { s => seqToConfig(s, indent = 6, quote = true) },
     sampling := Seq("*" -> 1),
@@ -99,20 +99,24 @@ object SbtAtmos extends Plugin {
     traceConfigString <<= (normalizedName, traceableConfigString, samplingConfigString, tracePort) map defaultTraceConfig,
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
+    traceConfigClasspath <<= traceConfig map createClasspath,
+    aspectjWeaver <<= findAspectjWeaver,
+    sigarLibs <<= unpackSigar,
+    traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
-    atmosPorts <<= (atmosPort, consolePort) map AtmosPorts,
-    atmosOptions <<= (atmosJvmOptions, consoleJvmOptions, traceOptions) map AtmosOptions,
-    atmosClasspaths <<= (atmosClasspath, consoleClasspath) map AtmosClasspaths,
-    atmosConfigs <<= (atmosConfig, consoleConfig, traceConfig) map AtmosConfigs,
+    atmosManagedClasspath in Compile <<= collectManagedClasspath(AtmosTraceCompile),
+    atmosClasspath in Compile <<= Classpaths.concat(traceConfigClasspath, atmosManagedClasspath in Compile),
+    traceCompileClasspath <<= traceFullClasspath(Compile),
 
+    atmosOptions <<= (atmosPort, atmosJvmOptions, atmosClasspath) map AtmosOptions,
+    consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
-
-    atmosInputs <<= (atmosPorts, atmosOptions, atmosClasspaths, atmosDirectory, atmosConfigs, atmosRunListeners) map AtmosInputs,
+    atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs,
 
     mainClass in run <<= mainClass in run in Compile,
 
-    inScope(Scope(This, Select(Atmos), Select(run.key), This))(Seq(runner <<= atmosRunner)).head,
+    inTask(run)(Seq(runner <<= atmosRunner)).head,
     run <<= Defaults.runTask(traceCompileClasspath, mainClass in run, runner in run),
     runMain <<= Defaults.runMainTask(traceCompileClasspath, runner in run)
   )

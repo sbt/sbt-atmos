@@ -29,18 +29,9 @@ object AtmosRunner {
   val AtmosWeave   = config("atmos-weave").hide
   val AtmosSigar   = config("atmos-sigar").hide
 
-  case class AtmosInputs(
-    ports: AtmosPorts,
-    options: AtmosOptions,
-    classpaths: AtmosClasspaths,
-    atmosDirectory: File,
-    configs: AtmosConfigs,
-    runListeners: Seq[URI => Unit])
+  case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
-  case class AtmosPorts(atmos: Int, console: Int)
-  case class AtmosOptions(atmos: Seq[String], console: Seq[String], trace: Seq[String])
-  case class AtmosClasspaths(atmos: Classpath, console: Classpath)
-  case class AtmosConfigs(atmos: File, console: File, trace: File)
+  case class AtmosInputs(atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
 
   def traceJavaOptions(aspectjWeaver: Option[File], sigarLibs: Option[File]): Seq[String] = {
     val javaAgent = aspectjWeaver.toSeq map { w => "-javaagent:" + w.getAbsolutePath }
@@ -102,11 +93,13 @@ object AtmosRunner {
     "com.typesafe.atmos" % "atmos-sigar-libs" % version % AtmosSigar.name
   )
 
-  def managedClasspath(config: Configuration): Initialize[Task[Classpath]] =
+  def collectManagedClasspath(config: Configuration): Initialize[Task[Classpath]] =
     (classpathTypes, update) map { (types, report) => Classpaths.managedJars(config, types, report) }
 
+  def createClasspath(file: File): Classpath = Seq(Attributed.blank(file))
+
   def traceFullClasspath(config: Configuration): Initialize[Task[Classpath]] =
-    (traceClasspath in config, internalDependencyClasspath in config, unmanagedClasspath in config, exportedProducts in config) map {
+    (atmosClasspath in config, internalDependencyClasspath in config, unmanagedClasspath in config, exportedProducts in config) map {
       (trace, internal, unmanaged, products) => (trace ++ internal ++ unmanaged ++ products).distinct
     }
 
@@ -214,10 +207,10 @@ object AtmosRunner {
   }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
-    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, sigarLibs, atmosInputs) map {
-      (base, options, strategy, forkRun, javaHomeDir, trap, connectIn, sigar, inputs) =>
+    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, traceOptions, sigarLibs, atmosInputs) map {
+      (base, options, strategy, forkRun, javaHomeDir, trap, connectIn, traceOpts, sigar, inputs) =>
         if (forkRun) {
-          val forkConfig = ForkOptions(javaHomeDir, strategy, Seq.empty, Some(base), options ++ inputs.options.trace, connectIn)
+          val forkConfig = ForkOptions(javaHomeDir, strategy, Seq.empty, Some(base), options ++ traceOpts, connectIn)
           new AtmosForkRun(forkConfig, inputs)
         } else {
           new AtmosDirectRun(trap, sigar, javaHomeDir, inputs)
@@ -260,9 +253,9 @@ object AtmosRunner {
       val devNull = Some(LoggedOutput(DevNullLogger))
 
       val atmosMain = "com.typesafe.atmos.AtmosDev"
-      val atmosCp = inputs.configs.atmos +: inputs.classpaths.atmos.files
-      val atmosPort = inputs.ports.atmos
-      val atmosJVMOptions = inputs.options.atmos ++ Seq("-Dquery.http.port=" + atmosPort)
+      val atmosCp = inputs.atmos.classpath.files
+      val atmosPort = inputs.atmos.port
+      val atmosJVMOptions = inputs.atmos.options ++ Seq("-Dquery.http.port=" + atmosPort)
       val atmosForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
       val atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
@@ -273,9 +266,9 @@ object AtmosRunner {
       }
 
       val consoleMain = "play.core.server.NettyServer"
-      val consoleCp = inputs.configs.console +: inputs.classpaths.console.files
-      val consolePort = inputs.ports.console
-      val consoleJVMOptions = inputs.options.console ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
+      val consoleCp = inputs.console.classpath.files
+      val consolePort = inputs.console.port
+      val consoleJVMOptions = inputs.console.options ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
       val consoleForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
       val console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
@@ -290,8 +283,7 @@ object AtmosRunner {
       for (listener <- inputs.runListeners) listener(consoleUri)
 
       try {
-        val cp = inputs.configs.trace +: classpath
-        atmosRun(mainClass, cp, arguments, log)
+        atmosRun(mainClass, classpath, arguments, log)
       } finally {
         atmos.stop()
         console.stop()
