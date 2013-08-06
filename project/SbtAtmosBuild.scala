@@ -26,7 +26,8 @@ object SbtAtmosBuild extends Build {
     base = file("play"),
     dependencies = Seq(sbtAtmosAkka),
     settings = defaultSettings ++ Seq(
-      name := "sbt-atmos-play"
+      name := "sbt-atmos-play",
+      libraryDependencies <+= Dependency.playPlugin
     )
   )
 
@@ -51,5 +52,14 @@ object SbtAtmosBuild extends Build {
 
   object Dependency {
     val aspectjTools = "org.aspectj" % "aspectjtools" % "1.7.2"
+
+    def playPlugin = (sbtVersion in sbtPlugin, scalaBinaryVersion in update) { (sbtV, scalaV) =>
+      val dependency = sbtV match {
+        case "0.12" => "play" % "sbt-plugin" % "2.1-SNAPSHOT"
+        case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2-SNAPSHOT"
+        case _ => sys.error("Unsupported sbt version: " + sbtV)
+      }
+      Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
+    }
   }
 }
