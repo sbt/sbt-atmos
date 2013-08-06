@@ -67,7 +67,11 @@ object SbtAtmos extends Plugin {
     inConfig(AtmosTest)(atmosScopedSettings(Test, AtmosTraceTest)) ++
     atmosUnscopedSettings
 
-  def atmosScopedSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
+  def atmosScopedSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] =
+    atmosConfigurationSettings(extendConfig, classpathConfig) ++
+    atmosRunSettings(extendConfig)
+
+  def atmosConfigurationSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
     aspectjVersion := "1.7.2",
 
@@ -119,8 +123,10 @@ object SbtAtmos extends Plugin {
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
-    atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs,
+    atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
+  )
 
+  def atmosRunSettings(extendConfig: Configuration): Seq[Setting[_]] = Seq(
     mainClass in run <<= mainClass in run in extendConfig,
     inTask(run)(Seq(runner <<= atmosRunner)).head,
     run <<= Defaults.runTask(fullClasspath, mainClass in run, runner in run),
@@ -136,10 +142,10 @@ object SbtAtmos extends Plugin {
     libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
-    autoTraceDependencies
+    autoTraceAkkaDependencies
   )
 
-  def autoTraceDependencies = {
+  def autoTraceAkkaDependencies = {
     libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(selectTraceDependencies)
   }
 
