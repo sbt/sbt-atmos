@@ -103,11 +103,6 @@ object AtmosRunner {
 
   def createClasspath(file: File): Classpath = Seq(Attributed.blank(file))
 
-  def traceFullClasspath(config: Configuration): Initialize[Task[Classpath]] =
-    (atmosClasspath in config, internalDependencyClasspath in config, unmanagedClasspath in config, exportedProducts in config) map {
-      (trace, internal, unmanaged, products) => (trace ++ internal ++ unmanaged ++ products).distinct
-    }
-
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
     update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
 

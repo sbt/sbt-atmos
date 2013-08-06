@@ -107,9 +107,13 @@ object SbtAtmos extends Plugin {
     sigarLibs <<= unpackSigar,
     traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
-    atmosManagedClasspath in extendConfig <<= collectManagedClasspath(classpathConfig),
-    atmosClasspath in extendConfig <<= Classpaths.concat(traceConfigClasspath, atmosManagedClasspath in extendConfig),
-    fullClasspath <<= traceFullClasspath(extendConfig),
+    unmanagedClasspath <<= unmanagedClasspath in extendConfig,
+    managedClasspath <<= collectManagedClasspath(classpathConfig),
+    internalDependencyClasspath <<= internalDependencyClasspath in extendConfig,
+    externalDependencyClasspath <<= Classpaths.concat(unmanagedClasspath, managedClasspath),
+    dependencyClasspath <<= Classpaths.concat(internalDependencyClasspath, externalDependencyClasspath),
+    exportedProducts <<= Classpaths.concat(exportedProducts in extendConfig, traceConfigClasspath),
+    fullClasspath <<= Classpaths.concatDistinct(exportedProducts, dependencyClasspath),
 
     atmosOptions <<= (atmosPort, atmosJvmOptions, atmosClasspath) map AtmosOptions,
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
