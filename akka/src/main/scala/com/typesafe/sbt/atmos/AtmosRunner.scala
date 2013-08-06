@@ -292,11 +292,11 @@ object AtmosRunner {
   }
 
   class Forked(name: String, config: ForkScalaRun, temporary: Boolean, log: Logger) {
-    @volatile private var workingDirectory: Option[File] = None
-    @volatile private var process: Process = _
-    @volatile private var shutdownHook: Thread = _
+    private var workingDirectory: Option[File] = None
+    private var process: Process = _
+    private var shutdownHook: Thread = _
 
-    def run(mainClass: String, classpath: Seq[File], options: Seq[String] = Seq.empty): Forked = {
+    def run(mainClass: String, classpath: Seq[File], options: Seq[String] = Seq.empty): Forked = synchronized {
       val javaOptions = config.runJVMOptions ++ Seq("-classpath", Path.makeString(classpath), mainClass) ++ options
       val strategy = config.outputStrategy getOrElse LoggedOutput(log)
       workingDirectory = if (temporary) Some(IO.createTemporaryDirectory) else config.workingDirectory
@@ -313,12 +313,12 @@ object AtmosRunner {
       } else 0
     }
 
-    def stop(): Unit = {
+    def stop(): Unit = synchronized {
       cancelShutdownHook()
       destroy()
     }
 
-    def destroy(): Unit = {
+    def destroy(): Unit = synchronized {
       if (process ne null) {
         log.info("Stopping " + name)
         process.destroy()
@@ -330,7 +330,7 @@ object AtmosRunner {
       }
     }
 
-    def cancelShutdownHook(): Unit = {
+    def cancelShutdownHook(): Unit = synchronized {
       if (shutdownHook ne null) {
         JRuntime.getRuntime.removeShutdownHook(shutdownHook)
         shutdownHook = null.asInstanceOf[Thread]
