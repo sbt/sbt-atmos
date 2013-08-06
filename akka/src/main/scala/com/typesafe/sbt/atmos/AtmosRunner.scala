@@ -248,45 +248,13 @@ object AtmosRunner {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
-      log.info("Starting Atmos and Typesafe Console ...")
-
-      val devNull = Some(LoggedOutput(DevNullLogger))
-
-      val atmosMain = "com.typesafe.atmos.AtmosDev"
-      val atmosCp = inputs.atmos.classpath.files
-      val atmosPort = inputs.atmos.port
-      val atmosJVMOptions = inputs.atmos.options ++ Seq("-Dquery.http.port=" + atmosPort)
-      val atmosForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
-      val atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
-      val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
-
-      if (!atmosRunning) {
-        atmos.stop()
-        sys.error("Could not start Atmos on port [%s]" format atmosPort)
-      }
-
-      val consoleMain = "play.core.server.NettyServer"
-      val consoleCp = inputs.console.classpath.files
-      val consolePort = inputs.console.port
-      val consoleJVMOptions = inputs.console.options ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
-      val consoleForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
-      val console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
-      val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
-
-      if (!consoleRunning) {
-        atmos.stop()
-        console.stop()
-        sys.error("Could not start Typesafe Console on port [%s]" format consolePort)
-      }
-
-      val consoleUri = new URI("http://localhost:" + consolePort)
-      for (listener <- inputs.runListeners) listener(consoleUri)
+      val atmos = new AtmosController(javaHome, inputs, log)
 
       try {
+        atmos.start()
         atmosRun(mainClass, classpath, arguments, log)
       } finally {
         atmos.stop()
-        console.stop()
       }
     }
   }
@@ -372,6 +340,54 @@ object AtmosRunner {
       currentThread.setContextClassLoader(loader)
       try { main.invoke(null, options.toArray[String].asInstanceOf[Array[String]] ) }
       finally { currentThread.setContextClassLoader(oldLoader) }
+    }
+  }
+
+  class AtmosController(javaHome: Option[File], inputs: AtmosInputs, log: Logger) {
+    private var atmos: Forked = _
+    private var console: Forked = _
+
+    def start(): Unit = {
+      log.info("Starting Atmos and Typesafe Console ...")
+
+      val devNull = Some(LoggedOutput(DevNullLogger))
+
+      val atmosMain = "com.typesafe.atmos.AtmosDev"
+      val atmosCp = inputs.atmos.classpath.files
+      val atmosPort = inputs.atmos.port
+      val atmosJVMOptions = inputs.atmos.options ++ Seq("-Dquery.http.port=" + atmosPort)
+      val atmosForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
+      atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
+
+      val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
+
+      if (!atmosRunning) {
+        atmos.stop()
+        sys.error("Could not start Atmos on port [%s]" format atmosPort)
+      }
+
+      val consoleMain = "play.core.server.NettyServer"
+      val consoleCp = inputs.console.classpath.files
+      val consolePort = inputs.console.port
+      val consoleJVMOptions = inputs.console.options ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
+      val consoleForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
+      console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
+
+      val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
+
+      if (!consoleRunning) {
+        atmos.stop()
+        console.stop()
+        sys.error("Could not start Typesafe Console on port [%s]" format consolePort)
+      }
+
+      val consoleUri = new URI("http://localhost:" + consolePort)
+      for (listener <- inputs.runListeners) listener(consoleUri)
+    }
+
+    def stop(): Unit = {
+      atmos.stop()
+      console.stop()
     }
   }
 
