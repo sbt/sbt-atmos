@@ -113,16 +113,17 @@ object SbtAtmos extends Plugin {
 
     unmanagedClasspath <<= unmanagedClasspath in extendConfig,
     managedClasspath <<= collectManagedClasspath(classpathConfig),
+    managedClasspath <<= Classpaths.concat(managedClasspath, traceConfigClasspath),
     internalDependencyClasspath <<= internalDependencyClasspath in extendConfig,
     externalDependencyClasspath <<= Classpaths.concat(unmanagedClasspath, managedClasspath),
     dependencyClasspath <<= Classpaths.concat(internalDependencyClasspath, externalDependencyClasspath),
-    exportedProducts <<= Classpaths.concat(exportedProducts in extendConfig, traceConfigClasspath),
+    exportedProducts <<= exportedProducts in extendConfig,
     fullClasspath <<= Classpaths.concatDistinct(exportedProducts, dependencyClasspath),
 
     atmosOptions <<= (atmosPort, atmosJvmOptions, atmosClasspath) map AtmosOptions,
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
-    atmosRunListeners <+= streams map { s => logConsoleUri(s.log)(_) },
+    atmosRunListeners <+= state map { s => logConsoleUri(s.log)(_) },
     atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
   )
 
