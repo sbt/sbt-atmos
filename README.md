@@ -98,9 +98,6 @@ To run a specific main class:
 
     atmos:run-main org.something.MainClass
 
-**Note:** *Your application will run in a forked jvm. See the
-[sbt documentation on forking][forked] for more information.*
-
 
 Trace configuration
 -------------------
