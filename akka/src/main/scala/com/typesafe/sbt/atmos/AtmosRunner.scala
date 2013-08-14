@@ -32,7 +32,7 @@ object AtmosRunner {
 
   case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
-  case class AtmosInputs(atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
+  case class AtmosInputs(traceOnly: Boolean, atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
 
   def targetName(config: Configuration) = {
     "atmos" + (if (config.name == "compile") "" else "-" + config.name)
@@ -348,6 +348,10 @@ object AtmosRunner {
     private var console: Forked = _
 
     def start(): Unit = {
+      if (!inputs.traceOnly) startAtmos()
+    }
+
+    def startAtmos(): Unit = {
       log.info("Starting Atmos and Typesafe Console ...")
 
       val devNull = Some(LoggedOutput(DevNullLogger))
@@ -386,6 +390,10 @@ object AtmosRunner {
     }
 
     def stop(): Unit = {
+      if (!inputs.traceOnly) stopAtmos()
+    }
+
+    def stopAtmos(): Unit = {
       atmos.stop()
       console.stop()
     }

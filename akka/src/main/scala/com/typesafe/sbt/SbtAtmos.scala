@@ -20,6 +20,8 @@ object SbtAtmos extends Plugin {
     val aspectjVersion = SettingKey[String]("aspectj-version")
     val atmosDirectory = SettingKey[File]("atmos-directory")
 
+    val traceOnly = TaskKey[Boolean]("trace-only")
+
     val atmosPort = TaskKey[Int]("atmos-port")
     val consolePort = TaskKey[Int]("console-port")
     val tracePort = TaskKey[Int]("trace-port")
@@ -77,6 +79,8 @@ object SbtAtmos extends Plugin {
 
     atmosDirectory <<= target / targetName(extendConfig),
 
+    traceOnly := false,
+
     atmosPort := selectPort(8660),
     consolePort := selectPort(9900),
     tracePort := selectPort(28660),
@@ -124,7 +128,7 @@ object SbtAtmos extends Plugin {
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= state map { s => logConsoleUri(s.log)(_) },
-    atmosInputs <<= (atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
+    atmosInputs <<= (traceOnly, atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
   )
 
   def atmosRunSettings(extendConfig: Configuration): Seq[Setting[_]] = Seq(
