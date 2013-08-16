@@ -10,7 +10,7 @@ import java.net.URI
 object SbtAtmos extends Plugin {
   import atmos.AtmosRunner._
 
-  val AtmosVersion = "1.2.1"
+  val AtmosVersion = "1.3.0-SNAPSHOT"
 
   val Atmos = config("atmos").extend(Compile)
   val AtmosTest = config("atmos-test").extend(Atmos, Test)
