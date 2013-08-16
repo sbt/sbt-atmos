@@ -394,8 +394,8 @@ object AtmosRunner {
     }
 
     def stopAtmos(): Unit = {
-      atmos.stop()
-      console.stop()
+      if (atmos ne null) atmos.stop()
+      if (console ne null) console.stop()
     }
   }
 
