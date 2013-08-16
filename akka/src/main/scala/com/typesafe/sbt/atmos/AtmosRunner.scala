@@ -131,7 +131,9 @@ object AtmosRunner {
 
   def defaultConsoleConfig(name: String, atmosPort: Int): String = """
     |app.name = "%s"
-    |app.url="http://localhost:%s/monitoring"
+    |atmos.url = "http://localhost:%s/monitoring/"
+    |query.cache-historical-expiration = 60 seconds
+    |query.cache-metadata-expiration = 30 seconds
   """.trim.stripMargin.format(name, atmosPort)
 
   def seqToConfig(seq: Seq[(String, Any)], indent: Int, quote: Boolean): String = {
