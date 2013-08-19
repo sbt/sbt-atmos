@@ -155,7 +155,10 @@ object AtmosRunner {
       |    sampling {
       |%s
       |    }
-      |    send.port = %s
+      |    send {
+      |      port = %s
+      |      daemonic = true
+      |    }
       |  }
       |}
     """.trim.stripMargin.format(name, traceable, sampling, tracePort)
