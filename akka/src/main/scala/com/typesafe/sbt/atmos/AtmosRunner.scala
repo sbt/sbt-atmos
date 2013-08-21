@@ -11,7 +11,7 @@ import sbt.Project.Initialize
 import java.io.File.pathSeparator
 import java.lang.reflect.{ Method, Modifier }
 import java.lang.{ Runtime => JRuntime }
-import java.net.URI
+import java.net.{ URI, URLClassLoader }
 import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
 object AtmosRunner {
@@ -33,6 +33,8 @@ object AtmosRunner {
   case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
   case class AtmosInputs(traceOnly: Boolean, atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
+
+  case class Sigar(dependency: Option[File], nativeLibraries: Option[File])
 
   def targetName(config: Configuration) = {
     "atmos" + (if (config.name == "compile") "" else "-" + config.name)
@@ -105,6 +107,9 @@ object AtmosRunner {
 
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
     update map { report => report.matching(moduleFilter(organization = "org.aspectj", name = "aspectjweaver")) headOption }
+
+  def findSigar: Initialize[Task[Option[File]]] =
+    update map { report => report.matching(moduleFilter(organization = "org.fusesource", name = "sigar")) headOption }
 
   def selectPort(preferred: Int): Int = {
     var port = preferred
@@ -211,7 +216,7 @@ object AtmosRunner {
   }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
-    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, traceOptions, sigarLibs, atmosInputs) map {
+    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, traceOptions, sigar, atmosInputs) map {
       (base, options, strategy, forkRun, javaHomeDir, trap, connectIn, traceOpts, sigar, inputs) =>
         if (forkRun) {
           val forkConfig = ForkOptions(javaHomeDir, strategy, Seq.empty, Some(base), options ++ traceOpts, connectIn)
@@ -233,13 +238,29 @@ object AtmosRunner {
     }
   }
 
-  class AtmosDirectRun(trapExit: Boolean, sigarLibs: Option[File], javaHome: Option[File], inputs: AtmosInputs) extends AtmosRun(javaHome, inputs) {
+  object SigarClassLoader {
+    private var sigarLoader: Option[ClassLoader] = None
+
+    def apply(sigar: Sigar): ClassLoader = synchronized {
+      if (sigarLoader.isDefined) {
+        sigarLoader.get
+      } else if (sigar.dependency.isEmpty || sigar.nativeLibraries.isEmpty) {
+        null
+      } else {
+        sigar.nativeLibraries foreach { s => System.setProperty("org.hyperic.sigar.path", s.getAbsolutePath) }
+        val loader = new URLClassLoader(Path.toURLs(sigar.dependency.toSeq), null)
+        sigarLoader = Some(loader)
+        loader
+      }
+    }
+  }
+
+  class AtmosDirectRun(trapExit: Boolean, sigar: Sigar, javaHome: Option[File], inputs: AtmosInputs) extends AtmosRun(javaHome, inputs) {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
       System.setProperty("org.aspectj.tracing.factory", "default")
-      sigarLibs foreach { s => System.setProperty("org.hyperic.sigar.path", s.getAbsolutePath) }
-      val loader = new WeavingURLClassLoader(Path.toURLs(classpath), null)
+      val loader = new WeavingURLClassLoader(Path.toURLs(classpath), SigarClassLoader(sigar))
       (new RunMain(loader, mainClass, options)).run(trapExit, log)
     }
   }

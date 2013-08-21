@@ -53,7 +53,9 @@ object SbtAtmos extends Plugin {
     val traceConfig = TaskKey[File]("trace-config")
     val traceConfigClasspath = TaskKey[Classpath]("trace-config-classpath")
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
+    val sigarDependency = TaskKey[Option[File]]("sigar-dependency")
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
+    val sigar = TaskKey[Sigar]("sigar")
     val traceOptions = TaskKey[Seq[String]]("trace-options")
 
     val atmosOptions = TaskKey[AtmosOptions]("atmos-options")
@@ -112,7 +114,9 @@ object SbtAtmos extends Plugin {
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
     traceConfigClasspath <<= traceConfig map createClasspath,
     aspectjWeaver <<= findAspectjWeaver,
+    sigarDependency <<= findSigar,
     sigarLibs <<= unpackSigar,
+    sigar <<= (sigarDependency, sigarLibs) map Sigar,
     traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
     unmanagedClasspath <<= unmanagedClasspath in extendConfig,
