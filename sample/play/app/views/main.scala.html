@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title></title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+    </head>
+    <body>
+        <h1>Does some requests in background, keep it opened</h1>
+        Speed:
+        <label><input type="radio" name="speed" value="0"/> stopped </label>
+        <label><input type="radio" name="speed" value="30000"/> 1req/60s </label>
+        <label><input type="radio" name="speed" value="5000" checked="checked"/> 1req/10s</label>
+        <label><input type="radio" name="speed" value="1000"/> 1req/s</label>
+        <label><input type="radio" name="speed" value="100"/> 10req/s</label>
+        <div id="debug"></div>
+        <script src="@routes.Assets.at("javascripts/jquery-1.9.0.min.js")" type="text/javascript"></script>
+        <script src="@routes.Assets.at("javascripts/main.js")" type="text/javascript"></script>
+    </body>
+</html>
