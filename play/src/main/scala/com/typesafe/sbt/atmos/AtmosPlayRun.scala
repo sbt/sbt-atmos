@@ -17,14 +17,19 @@ object AtmosPlayRun {
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlayRunSettings(): Seq[Setting[_]] = Seq(
-    weavingClassLoader in AtmosPlay := createWeavingClassLoader,
+    weavingClassLoader in AtmosPlay <<= (sigar in AtmosPlay) map createWeavingClassLoader,
     playRunHooks in AtmosPlay <<= playRunHooks,
     playRunHooks in AtmosPlay <+= (javaHome in run in AtmosPlay, atmosInputs in AtmosPlay, sigarLibs in AtmosPlay, state) map { (javaHome, inputs, sigar, s) =>
       new RunHook(javaHome, inputs, sigar, s.log)
     }
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
-  val createWeavingClassLoader: ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {
+  def createWeavingClassLoader(sigar: Sigar): ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {
+    val sigarLoader = SigarClassLoader(sigar)
+    override def loadClass(name: String, resolve: Boolean): Class[_] = {
+      if (name startsWith "org.hyperic.sigar") sigarLoader.loadClass(name)
+      else super.loadClass(name, resolve)
+    }
     override def toString = "Weaving" + name + "{" + getURLs.map(_.toString).mkString(", ") + "}"
   }
 
