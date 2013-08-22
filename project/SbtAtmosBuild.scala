@@ -55,10 +55,11 @@ object SbtAtmosBuild extends Build {
     def playPlugin: Seq[Setting[_]] = Seq(
       resolvers += Classpaths.typesafeSnapshots,
       resolvers += "Typesafe Maven Snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
+      resolvers += "Typesafe Maven Releases" at "http://repo.typesafe.com/typesafe/releases/",
       libraryDependencies <+= (sbtVersion in sbtPlugin, scalaBinaryVersion in update) { (sbtV, scalaV) =>
         val dependency = sbtV match {
-          case "0.12" => "play" % "sbt-plugin" % "2.1-SNAPSHOT"
-          case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2-2013-08-09-074a9c8-SNAPSHOT"
+          case "0.12" => "play" % "sbt-plugin" % "2.1.4-RC1"
+          case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2-2013-08-18-e10a665-SNAPSHOT"
           case _ => sys.error("Unsupported sbt version: " + sbtV)
         }
         Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
