@@ -9,7 +9,7 @@ object SbtAtmosBuild extends Build {
     id = "sbt-atmos",
     base = file("."),
     settings = defaultSettings ++ noPublishSettings,
-    aggregate = Seq(sbtAtmosAkka, sbtAtmosPlay)
+    aggregate = Seq(sbtAtmosAkka)
   )
 
   lazy val sbtAtmosAkka = Project(
@@ -19,15 +19,6 @@ object SbtAtmosBuild extends Build {
       name := "sbt-atmos",
       libraryDependencies += Dependency.aspectjTools
     )
-  )
-
-  lazy val sbtAtmosPlay = Project(
-    id = "sbt-atmos-play",
-    base = file("play"),
-    dependencies = Seq(sbtAtmosAkka),
-    settings = defaultSettings ++ Seq(
-      name := "sbt-atmos-play"
-    ) ++ Dependency.playPlugin
   )
 
   lazy val defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings ++ crossBuildSettings ++ Seq(
@@ -51,18 +42,5 @@ object SbtAtmosBuild extends Build {
 
   object Dependency {
     val aspectjTools = "org.aspectj" % "aspectjtools" % "1.7.2"
-
-    def playPlugin: Seq[Setting[_]] = Seq(
-      resolvers += Classpaths.typesafeSnapshots,
-      resolvers += "Typesafe Maven Snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
-      libraryDependencies <+= (sbtVersion in sbtPlugin, scalaBinaryVersion in update) { (sbtV, scalaV) =>
-        val dependency = sbtV match {
-          case "0.12" => "play" % "sbt-plugin" % "2.1-SNAPSHOT"
-          case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2-2013-08-09-074a9c8-SNAPSHOT"
-          case _ => sys.error("Unsupported sbt version: " + sbtV)
-        }
-        Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
-      }
-    )
   }
 }
