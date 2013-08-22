@@ -24,6 +24,10 @@ object AtmosPlayRun {
     }
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
+  def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = Seq(
+    "com.typesafe.atmos" % ("trace-play-" + playVersion) % atmosVersion % AtmosTraceCompile.name cross CrossVersion.Disabled
+  )
+
   def createWeavingClassLoader(sigar: Sigar): ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {
     val sigarLoader = SigarClassLoader(sigar)
     override def loadClass(name: String, resolve: Boolean): Class[_] = {

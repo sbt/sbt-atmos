@@ -15,5 +15,5 @@ object AtmosPlaySpecific {
 
   def atmosPlaySpecificSettings(): Seq[Setting[_]] = Seq(
     run in AtmosPlay <<= playRunTask(playRunHooks in AtmosPlay, externalDependencyClasspath in AtmosPlay, weavingClassLoader in AtmosPlay, playReloaderClasspath, playReloaderClassLoader)
-  ) ++ SbtAtmos.traceAkka("2.2.0")
+  )
 }
