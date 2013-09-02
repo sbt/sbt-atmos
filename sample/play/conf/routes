@@ -7,6 +7,7 @@ GET     /                           controllers.Application.index
 
 # Success requests
 GET     /helloGet                   controllers.Application.helloGet
+GET     /helloSearch                controllers.Application.helloSearch(term)
 POST    /helloPost                  controllers.Application.helloPost
 POST    /helloFile                  controllers.Application.helloFile
 DELETE  /helloDelete                controllers.Application.helloDelete

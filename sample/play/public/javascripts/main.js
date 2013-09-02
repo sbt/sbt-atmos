@@ -3,11 +3,24 @@ var form = new FormData()
 var blob = new Blob([playLogo64], { type: "image/png"})
 	form.append("picture", blob)
 
+var terms = [
+  "star",
+  "mongo",
+  "head",
+  "play",
+  "error",
+  "kind"
+]
 
 var timer, speed = 10000,
 	requests = [
 		{
 			url: "/helloGet",
+			method: "GET"
+		},
+		{
+			search: true,
+			url: "/helloSearch",
 			method: "GET"
 		},
 		{
@@ -21,24 +34,22 @@ var timer, speed = 10000,
 		{
 			url: "/helloDelete",
 			method: "DELETE"
+		},
+		{
+			url: "/notFound",
+			method: "GET"
+		},
+		{
+			url: "/badRequest",
+			method: "GET"
+		},
+		{
+			url: "/helloFile",
+			method: "POST",
+			contentType: false,
+			processData: false,
+			data: form
 		}
-		// },
-		// Currently disabled:
-		// {
-		// 	url: "/helloFile",
-		// 	method: "POST",
-		// 	contentType: false,
-		// 	processData: false,
-		// 	data: form
-		// },
-		// {
-		// 	url: "/notFound",
-		// 	method: "GET"
-		// },
-		// {
-		// 	url: "/badRequest",
-		// 	method: "GET"
-		// }
 	],
 	debug = $("#debug"),
 	def = function(url){
@@ -59,7 +70,11 @@ var timer, speed = 10000,
 
 function doReq(){
 	var r = requests[ Math.floor(Math.random() * requests.length) ]
-	var params = $.extend(r,def(r.url))
+	var c = $.extend({},r)
+	if (c.search) {
+		c.url += "?term=" + terms[Math.floor(Math.random() * terms.length)]
+	}
+	var params = $.extend(c,def(c.url))
 	$.ajax(params)
 }
 
