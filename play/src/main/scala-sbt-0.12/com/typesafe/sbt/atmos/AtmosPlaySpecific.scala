@@ -14,6 +14,8 @@ object AtmosPlaySpecific {
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlaySpecificSettings(): Seq[Setting[_]] = Seq(
+    playRunHooks in AtmosPlay <<= playRunHooks,
+    playRunHooks in AtmosPlay <+= AtmosPlayRun.createRunHook,
     commands += createPlayRunCommand("atmos-run", playRunHooks in AtmosPlay, externalDependencyClasspath in AtmosPlay, weavingClassLoader in AtmosPlay, playReloaderClasspath, playReloaderClassLoader)
   )
 }

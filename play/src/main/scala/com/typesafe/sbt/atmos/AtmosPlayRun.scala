@@ -6,7 +6,6 @@ package atmos
 
 import sbt._
 import sbt.Keys._
-import sbt.PlayKeys.playRunHooks
 import play.Project.ClassLoaderCreator
 import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
@@ -17,11 +16,7 @@ object AtmosPlayRun {
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlayRunSettings(): Seq[Setting[_]] = Seq(
-    weavingClassLoader in AtmosPlay <<= (sigar in AtmosPlay) map createWeavingClassLoader,
-    playRunHooks in AtmosPlay <<= playRunHooks,
-    playRunHooks in AtmosPlay <+= (javaHome in run in AtmosPlay, atmosInputs in AtmosPlay, sigarLibs in AtmosPlay, state) map { (javaHome, inputs, sigar, s) =>
-      new RunHook(javaHome, inputs, sigar, s.log)
-    }
+    weavingClassLoader in AtmosPlay <<= (sigar in AtmosPlay) map createWeavingClassLoader
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
   def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = Seq(
@@ -35,6 +30,10 @@ object AtmosPlayRun {
       else super.loadClass(name, resolve)
     }
     override def toString = "Weaving" + name + "{" + getURLs.map(_.toString).mkString(", ") + "}"
+  }
+
+  def createRunHook = (javaHome in run in AtmosPlay, atmosInputs in AtmosPlay, sigarLibs in AtmosPlay, state) map { (javaHome, inputs, sigar, s) =>
+    new RunHook(javaHome, inputs, sigar, s.log)
   }
 
   class RunHook(javaHome: Option[File], inputs: AtmosInputs, sigarLibs: Option[File], log: Logger) extends AtmosController(javaHome, inputs, log) with play.PlayRunHook {

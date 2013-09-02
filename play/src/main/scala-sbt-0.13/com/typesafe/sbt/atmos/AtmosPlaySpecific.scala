@@ -6,7 +6,7 @@ package atmos
 
 import sbt._
 import sbt.Keys._
-import sbt.PlayKeys.playRunHooks
+import play.Keys.playRunHooks
 import play.Project.{ playRunTask, playReloaderClasspath, playReloaderClassLoader }
 
 object AtmosPlaySpecific {
@@ -14,6 +14,8 @@ object AtmosPlaySpecific {
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlaySpecificSettings(): Seq[Setting[_]] = Seq(
+    playRunHooks in AtmosPlay <<= playRunHooks,
+    playRunHooks in AtmosPlay <+= AtmosPlayRun.createRunHook,
     run in AtmosPlay <<= playRunTask(playRunHooks in AtmosPlay, externalDependencyClasspath in AtmosPlay, weavingClassLoader in AtmosPlay, playReloaderClasspath, playReloaderClassLoader)
   )
 }
