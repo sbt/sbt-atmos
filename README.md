@@ -3,6 +3,10 @@ sbt-atmos
 
 [sbt] plugin for running [Typesafe Console][console] in development.
 
+A release candidate for the next version of Typesafe Console is available.
+This includes support for tracing Play applications. See the section below
+about the [Latest Typesafe Console](#latest-typesafe-console) for details.
+
 
 Add plugin
 ----------
@@ -137,6 +141,61 @@ More Information
 
 For more information see the [documentation] for the developer version of
 Typesafe Console.
+
+
+Latest Typesafe Console
+-----------------------
+
+A release candidate for the new Typesafe Console is available, with a
+corresponding release for sbt-atmos.
+
+To use with Akka applications, simply use as above with version `0.3.0-RC1`.
+
+For example, add the sbt-atmos plugin to `project/plugins.sbt`:
+
+```scala
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0-RC1")
+```
+
+### Play Applications
+
+Supported Play versions are `2.1.4-RC2` (with sbt 0.12),
+and `2.2.0-RC1` (with sbt 0.13).
+
+For Play applications add the following sbt plugin to `project/plugins.sbt`:
+
+```scala
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.0-RC1")
+```
+
+And add the `atmosPlaySettings` to the Play project. For example:
+
+```scala
+import sbt._
+import sbt.Keys._
+import play.Project._
+import com.typesafe.sbt.SbtAtmosPlay.atmosPlaySettings
+
+object ApplicationBuild extends Build {
+  val appName    = "traceplay"
+  val appVersion = "1.0"
+
+  val main = play.Project(appName, appVersion).settings(atmosPlaySettings: _*)
+}
+```
+
+For Play 2.1, there is an alternative run command, which also traces the
+application and starts Typesafe Console:
+
+```
+atmos-run
+```
+
+For Play 2.2, there is an alternative run task:
+
+```
+atmos-play:run
+```
 
 
 Feedback
