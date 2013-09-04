@@ -44,6 +44,7 @@ object SbtAtmos extends Plugin {
     val consoleManagedClasspath = TaskKey[Classpath]("console-managed-classpath")
     val consoleClasspath = TaskKey[Classpath]("console-classpath")
 
+    val node = SettingKey[String]("node")
     val traceable = SettingKey[Seq[(String, Boolean)]]("traceable")
     val traceableConfigString = SettingKey[String]("traceable-config-string")
     val sampling = SettingKey[Seq[(String, Int)]]("sampling")
@@ -105,11 +106,12 @@ object SbtAtmos extends Plugin {
     consoleManagedClasspath <<= collectManagedClasspath(AtmosConsole),
     consoleClasspath <<= Classpaths.concat(consoleConfigClasspath, consoleManagedClasspath),
 
+    node <<= name,
     traceable := Seq("*" -> true),
     traceableConfigString <<= traceable apply { s => seqToConfig(s, indent = 6, quote = true) },
     sampling := Seq("*" -> 1),
     samplingConfigString <<= sampling apply { s => seqToConfig(s, indent = 6, quote = true) },
-    traceConfigString <<= (normalizedName, traceableConfigString, samplingConfigString, tracePort) map defaultTraceConfig,
+    traceConfigString <<= (node, traceableConfigString, samplingConfigString, tracePort) map defaultTraceConfig,
     traceLogbackString := "",
     traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
     traceConfigClasspath <<= traceConfig map createClasspath,

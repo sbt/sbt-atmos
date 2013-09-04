@@ -152,7 +152,7 @@ object AtmosRunner {
     } mkString ("\n")
   }
 
-  def defaultTraceConfig(name: String, traceable: String, sampling: String, tracePort: Int): String = {
+  def defaultTraceConfig(node: String, traceable: String, sampling: String, tracePort: Int): String = {
     """
       |atmos {
       |  trace {
@@ -167,7 +167,7 @@ object AtmosRunner {
       |    send.port = %s
       |  }
       |}
-    """.trim.stripMargin.format(name, traceable, sampling, tracePort)
+    """.trim.stripMargin.format(StringUtilities.normalize(node), traceable, sampling, tracePort)
   }
 
   def defaultLogbackConfig(name: String): Initialize[String] = atmosLogDirectory { dir =>
