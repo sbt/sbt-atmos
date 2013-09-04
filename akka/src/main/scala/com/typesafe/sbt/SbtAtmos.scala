@@ -88,7 +88,7 @@ object SbtAtmos extends Plugin {
     consolePort := selectPort(9900),
     tracePort := selectPort(28660),
 
-    atmosJvmOptions := Seq("-Xms512m", "-Xmx1024m"),
+    atmosJvmOptions := Seq("-Xms512m", "-Xmx1024m", "-XX:+UseParallelGC"),
     atmosConfigDirectory <<= atmosDirectory / "conf",
     atmosLogDirectory <<= atmosDirectory / "log",
     atmosConfigString <<= tracePort map defaultAtmosConfig,
