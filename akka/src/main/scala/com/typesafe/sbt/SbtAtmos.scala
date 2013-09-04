@@ -98,7 +98,7 @@ object SbtAtmos extends Plugin {
     atmosManagedClasspath <<= collectManagedClasspath(AtmosDev),
     atmosClasspath <<= Classpaths.concat(atmosConfigClasspath, atmosManagedClasspath),
 
-    consoleJvmOptions := Seq("-Xms512m", "-Xmx512m"),
+    consoleJvmOptions := Seq("-Xms256m", "-Xmx512m"),
     consoleConfigString <<= (name, atmosPort) map defaultConsoleConfig,
     consoleLogbackString <<= defaultLogbackConfig("console"),
     consoleConfig <<= writeConfig("console", consoleConfigString, consoleLogbackString),
