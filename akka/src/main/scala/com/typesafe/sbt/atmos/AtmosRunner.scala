@@ -170,6 +170,21 @@ object AtmosRunner {
     """.trim.stripMargin.format(StringUtilities.normalize(node), traceable, sampling, tracePort)
   }
 
+  def includeAtmosConfig(configs: Seq[String]): String = {
+    val includes = configs map { name =>
+      """
+        |%s {
+        |  include "atmos"
+        |}
+      """.trim.stripMargin.format(name)
+    } mkString ("\n")
+
+    """
+      |include "atmos"
+      |%s
+    """.trim.stripMargin.format(includes)
+  }
+
   def defaultLogbackConfig(name: String): Initialize[String] = atmosLogDirectory { dir =>
     """
       |<?xml version="1.0" encoding="UTF-8"?>
@@ -195,13 +210,27 @@ object AtmosRunner {
 
   def writeConfig(name: String, configKey: TaskKey[String], logbackKey: SettingKey[String]): Initialize[Task[File]] =
     (atmosConfigDirectory, configKey, logbackKey) map { (confDir, conf, logback) =>
-      val dir = confDir / name
-      val confFile = dir / "application.conf"
-      val logbackFile = dir / "logback.xml"
-      if (conf.nonEmpty) IO.write(confFile, conf)
-      if (logback.nonEmpty) IO.write(logbackFile, logback)
-      dir
+      writeConfigFiles(confDir, name, Seq(
+        "application.conf" -> conf,
+        "logback.xml" -> logback
+      ))
     }
+
+  def writeTraceConfig(name: String, configKey: TaskKey[String], includesKey: TaskKey[String]): Initialize[Task[File]] =
+    (atmosConfigDirectory, configKey, includesKey) map { (confDir, conf, includes) =>
+      writeConfigFiles(confDir, name, Seq(
+        "atmos.conf" -> conf,
+        "application.conf" -> includes
+      ))
+    }
+
+  def writeConfigFiles(base: File, name: String, configs: Seq[(String, String)]): File = {
+    val dir = base / name
+    for ((filename, content) <- configs) {
+      if (content.nonEmpty) IO.write(dir / filename, content)
+    }
+    dir
+  }
 
   def unpackSigar: Initialize[Task[Option[File]]] = (update, atmosDirectory) map { (report, dir) =>
     report.matching(moduleFilter(name = "atmos-sigar-libs")).headOption map { jar =>

@@ -50,7 +50,8 @@ object SbtAtmos extends Plugin {
     val sampling = SettingKey[Seq[(String, Int)]]("sampling")
     val samplingConfigString = SettingKey[String]("sampling-config-string")
     val traceConfigString = TaskKey[String]("trace-config-string")
-    val traceLogbackString = SettingKey[String]("trace-logback-string")
+    val includeConfig = TaskKey[Seq[String]]("include-config")
+    val traceConfigIncludes = TaskKey[String]("trace-config-includes")
     val traceConfig = TaskKey[File]("trace-config")
     val traceConfigClasspath = TaskKey[Classpath]("trace-config-classpath")
     val aspectjWeaver = TaskKey[Option[File]]("aspectj-weaver")
@@ -112,8 +113,9 @@ object SbtAtmos extends Plugin {
     sampling := Seq("*" -> 1),
     samplingConfigString <<= sampling apply { s => seqToConfig(s, indent = 6, quote = true) },
     traceConfigString <<= (node, traceableConfigString, samplingConfigString, tracePort) map defaultTraceConfig,
-    traceLogbackString := "",
-    traceConfig <<= writeConfig("trace", traceConfigString, traceLogbackString),
+    includeConfig := Seq.empty,
+    traceConfigIncludes <<= includeConfig map includeAtmosConfig,
+    traceConfig <<= writeTraceConfig("trace", traceConfigString, traceConfigIncludes),
     traceConfigClasspath <<= traceConfig map createClasspath,
     aspectjWeaver <<= findAspectjWeaver,
     sigarDependency <<= findSigar,
