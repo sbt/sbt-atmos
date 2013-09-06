@@ -11,12 +11,12 @@ import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
 object AtmosPlayRun {
   import AtmosRunner._
+  import SbtAtmos.Atmos
   import SbtAtmos.AtmosKeys._
-  import SbtAtmosPlay.AtmosPlay
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlayRunSettings(): Seq[Setting[_]] = Seq(
-    weavingClassLoader in AtmosPlay <<= (sigar in AtmosPlay) map createWeavingClassLoader
+    weavingClassLoader in Atmos <<= (sigar in Atmos) map createWeavingClassLoader
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
   def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = Seq(
@@ -32,7 +32,7 @@ object AtmosPlayRun {
     override def toString = "Weaving" + name + "{" + getURLs.map(_.toString).mkString(", ") + "}"
   }
 
-  def createRunHook = (javaHome in run in AtmosPlay, atmosInputs in AtmosPlay, sigarLibs in AtmosPlay, state) map { (javaHome, inputs, sigar, s) =>
+  def createRunHook = (javaHome in run in Atmos, atmosInputs in Atmos, sigarLibs in Atmos, state) map { (javaHome, inputs, sigar, s) =>
     new RunHook(javaHome, inputs, sigar, s.log)
   }
 

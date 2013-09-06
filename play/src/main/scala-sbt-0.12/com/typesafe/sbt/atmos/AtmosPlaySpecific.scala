@@ -10,12 +10,12 @@ import sbt.PlayKeys.playRunHooks
 import play.Project.{ createPlayRunCommand, playReloaderClasspath, playReloaderClassLoader }
 
 object AtmosPlaySpecific {
-	import SbtAtmosPlay.AtmosPlay
+  import SbtAtmos.Atmos
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   def atmosPlaySpecificSettings(): Seq[Setting[_]] = Seq(
-    playRunHooks in AtmosPlay <<= playRunHooks,
-    playRunHooks in AtmosPlay <+= AtmosPlayRun.createRunHook,
-    commands += createPlayRunCommand("atmos-run", playRunHooks in AtmosPlay, externalDependencyClasspath in AtmosPlay, weavingClassLoader in AtmosPlay, playReloaderClasspath, playReloaderClassLoader)
+    playRunHooks in Atmos <<= playRunHooks,
+    playRunHooks in Atmos <+= AtmosPlayRun.createRunHook,
+    commands += createPlayRunCommand("atmos-run", playRunHooks in Atmos, externalDependencyClasspath in Atmos, weavingClassLoader in Atmos, playReloaderClasspath, playReloaderClassLoader)
   )
 }
