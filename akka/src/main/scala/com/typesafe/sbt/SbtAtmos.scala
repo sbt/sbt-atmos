@@ -22,6 +22,10 @@ object SbtAtmos extends Plugin {
 
     val traceOnly = TaskKey[Boolean]("trace-only")
 
+    val defaultAtmosPort = SettingKey[Int]("default-atmos-port")
+    val defaultConsolePort = SettingKey[Int]("default-console-port")
+    val defaultTracePort = SettingKey[Int]("default-trace-port")
+
     val atmosPort = TaskKey[Int]("atmos-port")
     val consolePort = TaskKey[Int]("console-port")
     val tracePort = TaskKey[Int]("trace-port")
@@ -85,9 +89,15 @@ object SbtAtmos extends Plugin {
 
     traceOnly := false,
 
-    atmosPort := selectPort(8660),
-    consolePort := selectPort(9900),
-    tracePort := selectPort(28660),
+    defaultAtmosPort := 8660,
+    defaultConsolePort := 9900,
+    defaultTracePort := 28660,
+
+    atmosPort <<= defaultAtmosPort map selectPort,
+    consolePort <<= defaultConsolePort map selectPort,
+    tracePort <<= (traceOnly, defaultTracePort) map { (traceOnly, port) =>
+      if (traceOnly) port else selectPort(port)
+    },
 
     atmosJvmOptions := Seq("-Xms512m", "-Xmx1024m", "-XX:+UseParallelGC"),
     atmosConfigDirectory <<= atmosDirectory / "conf",
