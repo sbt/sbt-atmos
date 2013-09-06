@@ -72,10 +72,14 @@ object SbtAtmos extends Plugin {
 
   import AtmosKeys._
 
-  lazy val atmosSettings: Seq[Setting[_]] =
+  lazy val atmosSettings: Seq[Setting[_]] = atmosCompileSettings ++ atmosTestSettings
+
+  def atmosCompileSettings: Seq[Setting[_]] =
     inConfig(Atmos)(atmosScopedSettings(Compile, AtmosTraceCompile)) ++
-    inConfig(AtmosTest)(atmosScopedSettings(Test, AtmosTraceTest)) ++
     atmosUnscopedSettings
+
+  def atmosTestSettings: Seq[Setting[_]] =
+    inConfig(AtmosTest)(atmosScopedSettings(Test, AtmosTraceTest))
 
   def atmosScopedSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] =
     atmosConfigurationSettings(extendConfig, classpathConfig) ++

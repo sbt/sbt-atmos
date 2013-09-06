@@ -19,7 +19,7 @@ object SbtAtmosPlay extends Plugin {
   import AtmosKeys._
   import AtmosPlayKeys._
 
-  lazy val atmosPlaySettings: Seq[Setting[_]] = atmosSettings ++ atmosPlayRunSettings ++ tracePlay
+  lazy val atmosPlaySettings: Seq[Setting[_]] = atmosCompileSettings ++ atmosPlayRunSettings ++ tracePlay
 
   def tracePlay(): Seq[Setting[_]] = Seq(
     libraryDependencies <++= (playVersion, atmosVersion in Atmos)(tracePlayDependencies)
