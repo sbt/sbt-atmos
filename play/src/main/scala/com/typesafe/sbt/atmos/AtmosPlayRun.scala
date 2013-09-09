@@ -36,13 +36,13 @@ object AtmosPlayRun {
     new RunHook(inputs, sigar, s.log)
   }
 
-  class RunHook(inputs: AtmosInputs, sigarLibs: Option[File], log: Logger) extends AtmosController(inputs, log) with play.PlayRunHook {
+  class RunHook(inputs: AtmosInputs, sigarLibs: Option[File], log: Logger) extends AtmosController(inputs) with play.PlayRunHook {
     override def beforeStarted(): Unit = {
       System.setProperty("org.aspectj.tracing.factory", "default")
       System.setProperty("config.resource", "application.conf")
       sigarLibs foreach { s => System.setProperty("org.hyperic.sigar.path", s.getAbsolutePath) }
-      start()
+      start(log)
     }
-    override def afterStopped(): Unit = stop()
+    override def afterStopped(): Unit = stop(log)
   }
 }

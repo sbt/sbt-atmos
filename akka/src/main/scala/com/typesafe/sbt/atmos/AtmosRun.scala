@@ -259,8 +259,8 @@ object AtmosRun {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running (forked) " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-      val forkRun = new Forked(mainClass, forkConfig, temporary = false, log)
-      val exitCode = forkRun.run(mainClass, classpath, options).exitValue()
+      val forkRun = new Forked(mainClass, forkConfig, temporary = false)
+      val exitCode = forkRun.run(mainClass, classpath, options, log).exitValue()
       forkRun.cancelShutdownHook()
       if (exitCode == 0) None
       else Some("Nonzero exit code returned from runner: " + exitCode)
@@ -302,27 +302,27 @@ object AtmosRun {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
-      val atmos = new AtmosController(inputs, log)
+      val atmos = new AtmosController(inputs)
 
       try {
-        atmos.start()
+        atmos.start(log)
         atmosRun(mainClass, classpath, arguments, log)
       } finally {
-        atmos.stop()
+        atmos.stop(log)
       }
     }
   }
 
-  class Forked(name: String, config: ForkScalaRun, temporary: Boolean, log: Logger) {
+  class Forked(name: String, config: ForkScalaRun, temporary: Boolean) {
     private var workingDirectory: Option[File] = None
     private var process: Process = _
     private var shutdownHook: Thread = _
 
-    def run(mainClass: String, classpath: Seq[File], options: Seq[String] = Seq.empty): Forked = synchronized {
+    def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Forked = synchronized {
       val javaOptions = config.runJVMOptions ++ Seq("-classpath", Path.makeString(classpath), mainClass) ++ options
       val strategy = config.outputStrategy getOrElse LoggedOutput(log)
       workingDirectory = if (temporary) Some(IO.createTemporaryDirectory) else config.workingDirectory
-      shutdownHook = new Thread(new Runnable { def run(): Unit = destroy() })
+      shutdownHook = new Thread(new Runnable { def run(): Unit = destroy(log) })
       JRuntime.getRuntime.addShutdownHook(shutdownHook)
       process = Fork.java.fork(config.javaHome, javaOptions, workingDirectory, Map.empty[String, String], config.connectInput, strategy)
       this
@@ -335,14 +335,14 @@ object AtmosRun {
       } else 0
     }
 
-    def stop(): Unit = synchronized {
+    def stop(log: Logger): Unit = synchronized {
       cancelShutdownHook()
-      destroy()
+      destroy(log)
     }
 
-    def destroy(): Unit = synchronized {
+    def destroy(log: Logger = null): Unit = synchronized {
       if (process ne null) {
-        log.info("Stopping " + name)
+        if (log ne null) log.info("Stopping " + name)
         process.destroy()
         process = null.asInstanceOf[Process]
         if (temporary) {
@@ -397,15 +397,15 @@ object AtmosRun {
     }
   }
 
-  class AtmosController(inputs: AtmosInputs, log: Logger) {
+  class AtmosController(inputs: AtmosInputs) {
     private var atmos: Forked = _
     private var console: Forked = _
 
-    def start(): Unit = {
-      if (!inputs.traceOnly) startAtmos()
+    def start(log: Logger): Unit = {
+      if (!inputs.traceOnly) startAtmos(log)
     }
 
-    def startAtmos(): Unit = {
+    def startAtmos(log: Logger): Unit = {
       log.info("Starting Atmos and Typesafe Console ...")
 
       val devNull = Some(LoggedOutput(DevNullLogger))
@@ -415,12 +415,12 @@ object AtmosRun {
       val atmosPort = inputs.atmos.port
       val atmosJVMOptions = inputs.atmos.options ++ Seq("-Dquery.http.port=" + atmosPort)
       val atmosForkConfig = ForkOptions(javaHome = inputs.javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
-      atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
+      atmos = new Forked("Atmos", atmosForkConfig, temporary = true).run(atmosMain, atmosCp, Seq.empty, log)
 
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
 
       if (!atmosRunning) {
-        atmos.stop()
+        atmos.stop(log)
         sys.error("Could not start Atmos on port [%s]" format atmosPort)
       }
 
@@ -429,13 +429,13 @@ object AtmosRun {
       val consolePort = inputs.console.port
       val consoleJVMOptions = inputs.console.options ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
       val consoleForkConfig = ForkOptions(javaHome = inputs.javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
-      console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
+      console = new Forked("Typesafe Console", consoleForkConfig, temporary = true).run(consoleMain, consoleCp, Seq.empty, log)
 
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }
 
       if (!consoleRunning) {
-        atmos.stop()
-        console.stop()
+        atmos.stop(log)
+        console.stop(log)
         sys.error("Could not start Typesafe Console on port [%s]" format consolePort)
       }
 
@@ -443,13 +443,13 @@ object AtmosRun {
       for (listener <- inputs.runListeners) listener(consoleUri)
     }
 
-    def stop(): Unit = {
-      if (!inputs.traceOnly) stopAtmos()
+    def stop(log: Logger): Unit = {
+      if (!inputs.traceOnly) stopAtmos(log)
     }
 
-    def stopAtmos(): Unit = {
-      if (atmos ne null) atmos.stop()
-      if (console ne null) console.stop()
+    def stopAtmos(log: Logger): Unit = {
+      if (atmos ne null) atmos.stop(log)
+      if (console ne null) console.stop(log)
     }
   }
 
