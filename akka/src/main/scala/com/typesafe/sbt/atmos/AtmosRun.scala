@@ -32,7 +32,7 @@ object AtmosRun {
 
   case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
-  case class AtmosInputs(traceOnly: Boolean, atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
+  case class AtmosInputs(traceOnly: Boolean, javaHome: Option[File], atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
 
   case class Sigar(dependency: Option[File], nativeLibraries: Option[File])
 
@@ -245,17 +245,17 @@ object AtmosRun {
   }
 
   def atmosRunner: Initialize[Task[ScalaRun]] =
-    (baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput, traceOptions, sigar, atmosInputs) map {
-      (base, options, strategy, forkRun, javaHomeDir, trap, connectIn, traceOpts, sigar, inputs) =>
+    (baseDirectory, javaOptions, outputStrategy, fork, trapExit, connectInput, traceOptions, sigar, atmosInputs) map {
+      (base, options, strategy, forkRun, trap, connectIn, traceOpts, sigar, inputs) =>
         if (forkRun) {
-          val forkConfig = ForkOptions(javaHomeDir, strategy, Seq.empty, Some(base), options ++ traceOpts, connectIn)
+          val forkConfig = ForkOptions(inputs.javaHome, strategy, Seq.empty, Some(base), options ++ traceOpts, connectIn)
           new AtmosForkRun(forkConfig, inputs)
         } else {
-          new AtmosDirectRun(trap, sigar, javaHomeDir, inputs)
+          new AtmosDirectRun(trap, sigar, inputs)
         }
     }
 
-  class AtmosForkRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends AtmosRunner(forkConfig.javaHome, inputs) {
+  class AtmosForkRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends AtmosRunner(inputs) {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running (forked) " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -284,7 +284,7 @@ object AtmosRun {
     }
   }
 
-  class AtmosDirectRun(trapExit: Boolean, sigar: Sigar, javaHome: Option[File], inputs: AtmosInputs) extends AtmosRunner(javaHome, inputs) {
+  class AtmosDirectRun(trapExit: Boolean, sigar: Sigar, inputs: AtmosInputs) extends AtmosRunner(inputs) {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -294,7 +294,7 @@ object AtmosRun {
     }
   }
 
-  abstract class AtmosRunner(javaHome: Option[File], inputs: AtmosInputs) extends ScalaRun {
+  abstract class AtmosRunner(inputs: AtmosInputs) extends ScalaRun {
     def atmosRun(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String]
 
     def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {
@@ -302,7 +302,7 @@ object AtmosRun {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
-      val atmos = new AtmosController(javaHome, inputs, log)
+      val atmos = new AtmosController(inputs, log)
 
       try {
         atmos.start()
@@ -397,7 +397,7 @@ object AtmosRun {
     }
   }
 
-  class AtmosController(javaHome: Option[File], inputs: AtmosInputs, log: Logger) {
+  class AtmosController(inputs: AtmosInputs, log: Logger) {
     private var atmos: Forked = _
     private var console: Forked = _
 
@@ -414,7 +414,7 @@ object AtmosRun {
       val atmosCp = inputs.atmos.classpath.files
       val atmosPort = inputs.atmos.port
       val atmosJVMOptions = inputs.atmos.options ++ Seq("-Dquery.http.port=" + atmosPort)
-      val atmosForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
+      val atmosForkConfig = ForkOptions(javaHome = inputs.javaHome, outputStrategy = devNull, runJVMOptions = atmosJVMOptions)
       atmos = new Forked("Atmos", atmosForkConfig, temporary = true, log).run(atmosMain, atmosCp)
 
       val atmosRunning = spinUntil(attempts = 50, sleep = 100) { busy(atmosPort) }
@@ -428,7 +428,7 @@ object AtmosRun {
       val consoleCp = inputs.console.classpath.files
       val consolePort = inputs.console.port
       val consoleJVMOptions = inputs.console.options ++ Seq("-Dhttp.port=" + consolePort, "-Dlogger.resource=/logback.xml")
-      val consoleForkConfig = ForkOptions(javaHome = javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
+      val consoleForkConfig = ForkOptions(javaHome = inputs.javaHome, outputStrategy = devNull, runJVMOptions = consoleJVMOptions)
       console = new Forked("Typesafe Console", consoleForkConfig, temporary = true, log).run(consoleMain, consoleCp)
 
       val consoleRunning = spinUntil(attempts = 50, sleep = 100) { busy(consolePort) }

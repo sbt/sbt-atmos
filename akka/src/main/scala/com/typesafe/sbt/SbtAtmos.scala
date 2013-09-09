@@ -150,7 +150,7 @@ object SbtAtmos extends Plugin {
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= state map { s => logConsoleUri(s.log)(_) },
-    atmosInputs <<= (traceOnly, atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
+    atmosInputs <<= (traceOnly, javaHome, atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
   )
 
   def atmosRunSettings(extendConfig: Configuration): Seq[Setting[_]] = Seq(

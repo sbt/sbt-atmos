@@ -32,11 +32,11 @@ object AtmosPlayRun {
     override def toString = "Weaving" + name + "{" + getURLs.map(_.toString).mkString(", ") + "}"
   }
 
-  def createRunHook = (javaHome in run in Atmos, atmosInputs in Atmos, sigarLibs in Atmos, state) map { (javaHome, inputs, sigar, s) =>
-    new RunHook(javaHome, inputs, sigar, s.log)
+  def createRunHook = (atmosInputs in Atmos, sigarLibs in Atmos, state) map { (inputs, sigar, s) =>
+    new RunHook(inputs, sigar, s.log)
   }
 
-  class RunHook(javaHome: Option[File], inputs: AtmosInputs, sigarLibs: Option[File], log: Logger) extends AtmosController(javaHome, inputs, log) with play.PlayRunHook {
+  class RunHook(inputs: AtmosInputs, sigarLibs: Option[File], log: Logger) extends AtmosController(inputs, log) with play.PlayRunHook {
     override def beforeStarted(): Unit = {
       System.setProperty("org.aspectj.tracing.factory", "default")
       System.setProperty("config.resource", "application.conf")
