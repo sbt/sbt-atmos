@@ -14,7 +14,7 @@ import java.lang.{ Runtime => JRuntime }
 import java.net.{ URI, URLClassLoader }
 import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
-object AtmosRunner {
+object AtmosRun {
   import SbtAtmos.Atmos
   import SbtAtmos.AtmosKeys._
 
@@ -255,7 +255,7 @@ object AtmosRunner {
         }
     }
 
-  class AtmosForkRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends AtmosRun(forkConfig.javaHome, inputs) {
+  class AtmosForkRun(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends AtmosRunner(forkConfig.javaHome, inputs) {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running (forked) " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -284,7 +284,7 @@ object AtmosRunner {
     }
   }
 
-  class AtmosDirectRun(trapExit: Boolean, sigar: Sigar, javaHome: Option[File], inputs: AtmosInputs) extends AtmosRun(javaHome, inputs) {
+  class AtmosDirectRun(trapExit: Boolean, sigar: Sigar, javaHome: Option[File], inputs: AtmosInputs) extends AtmosRunner(javaHome, inputs) {
     def atmosRun(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       log.info("Running " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -294,7 +294,7 @@ object AtmosRunner {
     }
   }
 
-  abstract class AtmosRun(javaHome: Option[File], inputs: AtmosInputs) extends ScalaRun {
+  abstract class AtmosRunner(javaHome: Option[File], inputs: AtmosInputs) extends ScalaRun {
     def atmosRun(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String]
 
     def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {

@@ -8,7 +8,7 @@ import sbt.Keys._
 import java.net.URI
 
 object SbtAtmos extends Plugin {
-  import atmos.AtmosRunner._
+  import atmos.AtmosRun._
 
   val AtmosVersion = "1.3.0-RC1"
 

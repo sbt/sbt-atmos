@@ -10,7 +10,7 @@ import play.Project.{ ClassLoaderCreator, playVersion }
 object SbtAtmosPlay extends Plugin {
   import SbtAtmos._
   import atmos.AtmosPlayRun._
-  import atmos.AtmosRunner.AtmosTraceCompile
+  import atmos.AtmosRun.AtmosTraceCompile
 
   object AtmosPlayKeys {
     val weavingClassLoader = TaskKey[ClassLoaderCreator]("weaving-class-loader")

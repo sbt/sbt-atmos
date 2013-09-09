@@ -10,7 +10,7 @@ import play.Project.ClassLoaderCreator
 import org.aspectj.weaver.loadtime.WeavingURLClassLoader
 
 object AtmosPlayRun {
-  import AtmosRunner._
+  import AtmosRun._
   import SbtAtmos.Atmos
   import SbtAtmos.AtmosKeys._
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
