@@ -47,12 +47,14 @@ object AtmosRun {
     javaAgent ++ aspectjOptions ++ sigarPath
   }
 
-  def atmosDependencies(version: String) = Seq(
-    "com.typesafe.atmos" % "atmos-dev" % version % AtmosDev.name
+  def atmosDependencies(version: String, useProGuardedVersion: Boolean) = Seq(
+    if (useProGuardedVersion) "com.typesafe.atmos" % "atmos-dev" % version % AtmosDev.name
+    else "com.typesafe.atmos" % "atmos-query" % version % AtmosDev.name
   )
 
-  def consoleDependencies(version: String) = Seq(
-    "com.typesafe.console" % "console-solo" % version % AtmosConsole.name
+  def consoleDependencies(version: String, useProGuardedVersion: Boolean) = Seq(
+    if (useProGuardedVersion) "com.typesafe.console" % "console-solo" % version % AtmosConsole.name
+    else "com.typesafe.console" % "typesafe-console" % version % AtmosConsole.name
   )
 
   def selectTraceDependencies(dependencies: Seq[ModuleID], atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {

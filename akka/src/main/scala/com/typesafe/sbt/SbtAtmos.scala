@@ -17,6 +17,7 @@ object SbtAtmos extends Plugin {
 
   object AtmosKeys {
     val atmosVersion = SettingKey[String]("atmos-version")
+    val atmosUseProGuardedVersion = SettingKey[Boolean]("atmos-use-proguarded-version")
     val aspectjVersion = SettingKey[String]("aspectj-version")
     val atmosDirectory = SettingKey[File]("atmos-directory")
 
@@ -87,6 +88,7 @@ object SbtAtmos extends Plugin {
 
   def atmosConfigurationSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
+    atmosUseProGuardedVersion := true,
     aspectjVersion := "1.7.2",
 
     atmosDirectory <<= target / targetName(extendConfig),
@@ -165,8 +167,8 @@ object SbtAtmos extends Plugin {
 
     resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
 
-    libraryDependencies <++= (atmosVersion in Atmos)(atmosDependencies),
-    libraryDependencies <++= (atmosVersion in Atmos)(consoleDependencies),
+    libraryDependencies <++= (atmosVersion in Atmos, atmosUseProGuardedVersion in Atmos)(atmosDependencies),
+    libraryDependencies <++= (atmosVersion in Atmos, atmosUseProGuardedVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
     autoTraceAkkaDependencies
