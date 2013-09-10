@@ -149,12 +149,12 @@ Latest Typesafe Console
 A release candidate for the new Typesafe Console is available, with a
 corresponding release for sbt-atmos.
 
-To use with Akka applications, simply use as above with version `0.3.0-RC1`.
+To use with Akka applications, simply use as above with version `0.3.0-RC2`.
 
 For example, add the sbt-atmos plugin to `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0-RC1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0-RC2")
 ```
 
 ### Play Applications
@@ -165,7 +165,7 @@ and `2.2.0-RC1` (with sbt 0.13).
 For Play applications add the following sbt plugin to `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.0-RC1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.0-RC2")
 ```
 
 And add the `atmosPlaySettings` to the Play project. For example:
@@ -194,7 +194,7 @@ atmos-run
 For Play 2.2, there is an alternative run task:
 
 ```
-atmos-play:run
+atmos:run
 ```
 
 
