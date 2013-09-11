@@ -32,7 +32,7 @@ object AtmosRun {
 
   case class AtmosOptions(port: Int, options: Seq[String], classpath: Classpath)
 
-  case class AtmosInputs(traceOnly: Boolean, javaHome: Option[File], atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
+  case class AtmosInputs(traceOnly: Boolean, tracePort: Int, javaHome: Option[File], atmos: AtmosOptions, console: AtmosOptions, runListeners: Seq[URI => Unit])
 
   case class Sigar(dependency: Option[File], nativeLibraries: Option[File])
 
@@ -304,13 +304,11 @@ object AtmosRun {
         log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
       }
 
-      val atmos = new AtmosController(inputs)
-
       try {
-        atmos.start(log)
+        AtmosController.start(inputs, log)
         atmosRun(mainClass, classpath, arguments, log)
       } finally {
-        atmos.stop(log)
+        AtmosController.stop(log)
       }
     }
   }
@@ -399,7 +397,32 @@ object AtmosRun {
     }
   }
 
-  class AtmosController(inputs: AtmosInputs) {
+  object AtmosController {
+    private var global: Option[AtmosController] = None
+    private var explicitlyStarted: Boolean = false
+
+    def start(inputs: AtmosInputs, log: Logger, explicit: Boolean = false): Unit = {
+      if (global.isEmpty) {
+        val controller = new AtmosController(inputs)
+        controller.start(log)
+        explicitlyStarted = explicit
+        global = Some(controller)
+      }
+    }
+
+    def stop(log: Logger, explicit: Boolean = false): Unit = synchronized {
+      if (explicit || !explicitlyStarted) {
+        global foreach (_.stop(log))
+        global = None
+      }
+    }
+
+    def tracePort(): Option[Int] = synchronized {
+      global map (_.inputs.tracePort)
+    }
+  }
+
+  class AtmosController(val inputs: AtmosInputs) {
     private var atmos: Forked = _
     private var console: Forked = _
 

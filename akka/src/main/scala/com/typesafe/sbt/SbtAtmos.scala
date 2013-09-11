@@ -69,6 +69,9 @@ object SbtAtmos extends Plugin {
     val consoleOptions = TaskKey[AtmosOptions]("console-options")
     val atmosRunListeners = TaskKey[Seq[URI => Unit]]("atmos-run-listeners")
     val atmosInputs = TaskKey[AtmosInputs]("atmos-inputs")
+
+    val start = TaskKey[Unit]("start")
+    val stop = TaskKey[Unit]("stop")
   }
 
   import AtmosKeys._
@@ -102,7 +105,7 @@ object SbtAtmos extends Plugin {
     atmosPort <<= defaultAtmosPort map selectPort,
     consolePort <<= defaultConsolePort map selectPort,
     tracePort <<= (traceOnly, defaultTracePort) map { (traceOnly, port) =>
-      if (traceOnly) port else selectPort(port)
+      if (traceOnly) port else AtmosController.tracePort getOrElse selectPort(port)
     },
 
     atmosJvmOptions := Seq("-Xms512m", "-Xmx1024m", "-XX:+UseParallelGC"),
@@ -152,7 +155,10 @@ object SbtAtmos extends Plugin {
     consoleOptions <<= (consolePort, consoleJvmOptions, consoleClasspath) map AtmosOptions,
     atmosRunListeners := Seq.empty,
     atmosRunListeners <+= state map { s => logConsoleUri(s.log)(_) },
-    atmosInputs <<= (traceOnly, javaHome, atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs
+    atmosInputs <<= (traceOnly, tracePort, javaHome, atmosOptions, consoleOptions, atmosRunListeners) map AtmosInputs,
+
+    start <<= (atmosInputs, streams) map { (inputs, s) => AtmosController.start(inputs, s.log, explicit = true) },
+    stop <<= streams map { s => AtmosController.stop(s.log, explicit = true) }
   )
 
   def atmosRunSettings(extendConfig: Configuration): Seq[Setting[_]] = Seq(
