@@ -8,6 +8,7 @@ import sbt.Keys._
 import java.net.URI
 
 object SbtAtmos extends Plugin {
+  import atmos.AtmosController
   import atmos.AtmosRun._
 
   val AtmosVersion = "1.3.0-RC1"
@@ -102,10 +103,10 @@ object SbtAtmos extends Plugin {
     defaultConsolePort := 9900,
     defaultTracePort := 28660,
 
-    atmosPort <<= defaultAtmosPort map selectPort,
-    consolePort <<= defaultConsolePort map selectPort,
-    tracePort <<= (traceOnly, defaultTracePort) map { (traceOnly, port) =>
-      if (traceOnly) port else AtmosController.tracePort getOrElse selectPort(port)
+    atmosPort <<= defaultAtmosPort map AtmosController.selectPort,
+    consolePort <<= defaultConsolePort map AtmosController.selectPort,
+    tracePort <<= (traceOnly, defaultTracePort) map { (traceOnly, defaultPort) =>
+      if (traceOnly) defaultPort else AtmosController.selectTracePort(defaultPort)
     },
 
     atmosJvmOptions := Seq("-Xms512m", "-Xmx1024m", "-XX:+UseParallelGC"),
