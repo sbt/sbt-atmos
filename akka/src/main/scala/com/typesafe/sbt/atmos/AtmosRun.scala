@@ -102,6 +102,15 @@ object AtmosRun {
   def collectManagedClasspath(config: Configuration): Initialize[Task[Classpath]] =
     (classpathTypes, update) map { (types, report) => Classpaths.managedJars(config, types, report) }
 
+  def collectTracedClasspath(config: Configuration): Initialize[Task[Classpath]] =
+    (classpathTypes, update, streams) map { (types, report, s) =>
+      val classpath = Classpaths.managedJars(config, types, report)
+      val tracedAkka = classpath count (_.metadata.get(Keys.moduleID.key).map(_.name).getOrElse("").startsWith("trace-akka-"))
+      if (tracedAkka < 1) s.log.warn("No trace dependencies for Atmos.")
+      if (tracedAkka > 1) s.log.warn("Multiple trace dependencies for Atmos.")
+      classpath
+    }
+
   def createClasspath(file: File): Classpath = Seq(Attributed.blank(file))
 
   def findAspectjWeaver: Initialize[Task[Option[File]]] =
@@ -289,10 +298,6 @@ object AtmosRun {
     def atmosRun(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String]
 
     def run(mainClass: String, classpath: Seq[File], arguments: Seq[String], log: Logger): Option[String] = {
-      if (!classpath.exists(_.name.startsWith("trace-akka-"))) {
-        log.warn("No trace dependencies for Atmos. See sbt-atmos readme for more information.")
-      }
-
       try {
         AtmosController.start(inputs, log)
         atmosRun(mainClass, classpath, arguments, log)

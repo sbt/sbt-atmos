@@ -144,7 +144,7 @@ object SbtAtmos extends Plugin {
     traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
     unmanagedClasspath <<= unmanagedClasspath in extendConfig,
-    managedClasspath <<= collectManagedClasspath(classpathConfig),
+    managedClasspath <<= collectTracedClasspath(classpathConfig),
     managedClasspath <<= Classpaths.concat(managedClasspath, traceConfigClasspath),
     internalDependencyClasspath <<= internalDependencyClasspath in extendConfig,
     externalDependencyClasspath <<= Classpaths.concat(unmanagedClasspath, managedClasspath),
