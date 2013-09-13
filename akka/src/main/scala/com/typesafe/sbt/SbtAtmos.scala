@@ -175,7 +175,7 @@ object SbtAtmos extends Plugin {
   )
 
   def autoTraceAkkaDependencies = {
-    libraryDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion)(selectTraceDependencies)
+    allDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion) map selectTraceDependencies
   }
 
   def traceAkka(akkaVersion: String) = {
