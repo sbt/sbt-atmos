@@ -80,17 +80,15 @@ object SbtAtmos extends Plugin {
   lazy val atmosSettings: Seq[Setting[_]] = atmosCompileSettings ++ atmosTestSettings
 
   def atmosCompileSettings: Seq[Setting[_]] =
-    inConfig(Atmos)(atmosScopedSettings(Compile, AtmosTraceCompile)) ++
+    inConfig(Atmos)(atmosDefaultSettings(Runtime, AtmosTraceCompile)) ++
+    inConfig(Atmos)(atmosRunSettings(Compile)) ++
     atmosUnscopedSettings
 
   def atmosTestSettings: Seq[Setting[_]] =
-    inConfig(AtmosTest)(atmosScopedSettings(Test, AtmosTraceTest))
+    inConfig(AtmosTest)(atmosDefaultSettings(Test, AtmosTraceTest)) ++
+    inConfig(AtmosTest)(atmosRunSettings(Test))
 
-  def atmosScopedSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] =
-    atmosConfigurationSettings(extendConfig, classpathConfig) ++
-    atmosRunSettings(extendConfig)
-
-  def atmosConfigurationSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
+  def atmosDefaultSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
     atmosUseProGuardedVersion := true,
     aspectjVersion := "1.7.2",

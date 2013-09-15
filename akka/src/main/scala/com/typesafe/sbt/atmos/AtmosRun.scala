@@ -34,7 +34,7 @@ object AtmosRun {
   case class Sigar(dependency: Option[File], nativeLibraries: Option[File])
 
   def targetName(config: Configuration) = {
-    "atmos" + (if (config.name == "compile") "" else "-" + config.name)
+    "atmos" + (if (config.name == "runtime") "" else "-" + config.name)
   }
 
   def traceJavaOptions(aspectjWeaver: Option[File], sigarLibs: Option[File]): Seq[String] = {
