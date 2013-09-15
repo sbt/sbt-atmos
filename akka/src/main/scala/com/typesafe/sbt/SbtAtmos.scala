@@ -77,7 +77,7 @@ object SbtAtmos extends Plugin {
 
   import AtmosKeys._
 
-  lazy val atmosSettings: Seq[Setting[_]] = atmosCompileSettings ++ atmosTestSettings
+  lazy val atmosSettings: Seq[Setting[_]] = atmosCompileSettings
 
   def atmosCompileSettings: Seq[Setting[_]] =
     inConfig(Atmos)(atmosDefaultSettings(Runtime, AtmosTraceCompile)) ++
