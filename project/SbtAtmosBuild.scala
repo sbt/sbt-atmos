@@ -3,7 +3,7 @@ import sbt.Keys._
 import net.virtualvoid.sbt.cross.CrossPlugin
 
 object SbtAtmosBuild extends Build {
-  val Version = "0.3.0-SNAPSHOT"
+  val Version = "0.3.0-RC3"
 
   lazy val sbtAtmos = Project(
     id = "sbt-atmos",
