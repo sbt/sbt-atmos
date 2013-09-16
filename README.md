@@ -236,7 +236,7 @@ author. Before we can accept pull requests, you will need to agree to the
 [documentation]: http://resources.typesafe.com/docs/console
 [support]: http://support.typesafe.com
 [email]: http://groups.google.com/group/typesafe-console
-[license]: http://github.com/typesafehub/sbt-atmos/blob/master/TypesafeSubscriptionAgreement.md
+[license]: http://typesafe.com/assets/legal/TypesafeSubscriptionAgreement.pdf
 [apache]: http://www.apache.org/licenses/LICENSE-2.0.html
 [licenses]: http://typesafe.com/legal/licenses
 [cla]: http://www.typesafe.com/contribute/cla
