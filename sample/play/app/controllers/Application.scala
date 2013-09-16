@@ -23,16 +23,14 @@ object Application extends Controller {
     Ok("Hello world: GET")
   }
 
-  def helloSearch(term:String) = Action {
+  def helloSearch(term:String) = Action.async {
     implicit val d = Akka.system.dispatcher
-    Async {
-      for {
-        result <- ask(Global.searchActor,SearchActorMessage.SearchFor(term))(Timeout(5.seconds)).mapTo[Option[Seq[String]]]
-      } yield {
-        result.map { r =>
-          Ok("Results: \r\n"+r.map(_ + "\r\n"))
-        } getOrElse Ok("No results found")
-      }
+    for {
+      result <- ask(Global.searchActor,SearchActorMessage.SearchFor(term))(Timeout(5.seconds)).mapTo[Option[Seq[String]]]
+    } yield {
+      result.map { r =>
+        Ok("Results: \r\n"+r.map(_ + "\r\n"))
+      } getOrElse Ok("No results found")
     }
   }
 
