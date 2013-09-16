@@ -308,18 +308,22 @@ object AtmosRun {
   }
 
   def atmosLauncher: Initialize[Task[ScalaRun]] =
-    (baseDirectory, javaOptions, outputStrategy, traceOptions, atmosInputs) map {
-      (base, options, strategy, traceOpts, inputs) =>
+    (baseDirectory, javaOptions, outputStrategy, traceOptions, atmosInputs, node, launchNode) map {
+      (base, options, strategy, traceOpts, inputs, defaultName, nodeNamer) =>
         val forkConfig = ForkOptions(inputs.javaHome, strategy, Seq.empty, Some(base), options ++ traceOpts, connectInput = false)
-        new AtmosLaunch(forkConfig, inputs)
+        new AtmosLaunch(forkConfig, inputs, defaultName, nodeNamer)
     }
 
-  class AtmosLaunch(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends ScalaRun {
+  class AtmosLaunch(forkConfig: ForkOptions, inputs: AtmosInputs, defaultName: String, nodeNamer: NodeNamer) extends ScalaRun {
     def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
       AtmosController.start(inputs, log)
       log.info("Launching " + mainClass + " " + options.mkString(" "))
       log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-      val forked = new Forked(mainClass, forkConfig, temporary = false)
+      val node = nodeNamer(defaultName, mainClass, options)
+      val nodeProperty = "-Datmos.trace.node=" + node
+      val nodeConfig = forkConfig.copy(runJVMOptions = (forkConfig.runJVMOptions :+ nodeProperty))
+      val name = "%s (%s)" format (node, mainClass)
+      val forked = new Forked(name, nodeConfig, temporary = false)
       forked.run(mainClass, classpath, options, log)
       AtmosController.launched(forked)
       None

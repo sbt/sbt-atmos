@@ -75,6 +75,9 @@ object SbtAtmos extends Plugin {
     val start = TaskKey[Unit]("start")
     val stop = TaskKey[Unit]("stop")
 
+    type NodeNamer = (String, String, Seq[String]) => String
+    val launchNode = TaskKey[NodeNamer]("launch-node")
+
     val launch = InputKey[Unit]("launch")
     val launchMain = InputKey[Unit]("launch-main")
   }
@@ -176,6 +179,7 @@ object SbtAtmos extends Plugin {
   def atmosLaunchSettings(): Seq[Setting[_]] = Seq(
     mainClass in launch <<= mainClass in run,
     outputStrategy in launch := Some(LoggedOutput(DevNullLogger)),
+    launchNode := { (name, mainClass, args) => name },
     inTask(launch)(Seq(runner <<= atmosLauncher)).head,
     launch <<= Defaults.runTask(fullClasspath, mainClass in launch, runner in launch),
     launchMain <<= Defaults.runMainTask(fullClasspath, runner in launch)
