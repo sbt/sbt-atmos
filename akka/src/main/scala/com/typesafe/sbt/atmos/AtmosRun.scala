@@ -306,4 +306,23 @@ object AtmosRun {
       }
     }
   }
+
+  def atmosLauncher: Initialize[Task[ScalaRun]] =
+    (baseDirectory, javaOptions, outputStrategy, traceOptions, atmosInputs) map {
+      (base, options, strategy, traceOpts, inputs) =>
+        val forkConfig = ForkOptions(inputs.javaHome, strategy, Seq.empty, Some(base), options ++ traceOpts, connectInput = false)
+        new AtmosLaunch(forkConfig, inputs)
+    }
+
+  class AtmosLaunch(forkConfig: ForkScalaRun, inputs: AtmosInputs) extends ScalaRun {
+    def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] = {
+      AtmosController.start(inputs, log)
+      log.info("Launching " + mainClass + " " + options.mkString(" "))
+      log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+      val forked = new Forked(mainClass, forkConfig, temporary = false)
+      forked.run(mainClass, classpath, options, log)
+      AtmosController.launched(forked)
+      None
+    }
+  }
 }

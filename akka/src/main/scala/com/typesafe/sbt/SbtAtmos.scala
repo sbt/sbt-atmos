@@ -10,6 +10,7 @@ import java.net.URI
 object SbtAtmos extends Plugin {
   import atmos.AtmosController
   import atmos.AtmosRun._
+  import atmos.DevNullLogger
 
   val AtmosVersion = "1.3.0-RC1"
 
@@ -73,6 +74,9 @@ object SbtAtmos extends Plugin {
 
     val start = TaskKey[Unit]("start")
     val stop = TaskKey[Unit]("stop")
+
+    val launch = InputKey[Unit]("launch")
+    val launchMain = InputKey[Unit]("launch-main")
   }
 
   import AtmosKeys._
@@ -82,11 +86,13 @@ object SbtAtmos extends Plugin {
   def atmosCompileSettings: Seq[Setting[_]] =
     inConfig(Atmos)(atmosDefaultSettings(Runtime, AtmosTraceCompile)) ++
     inConfig(Atmos)(atmosRunSettings(Compile)) ++
+    inConfig(Atmos)(atmosLaunchSettings) ++
     atmosUnscopedSettings
 
   def atmosTestSettings: Seq[Setting[_]] =
     inConfig(AtmosTest)(atmosDefaultSettings(Test, AtmosTraceTest)) ++
-    inConfig(AtmosTest)(atmosRunSettings(Test))
+    inConfig(AtmosTest)(atmosRunSettings(Test)) ++
+    inConfig(AtmosTest)(atmosLaunchSettings)
 
   def atmosDefaultSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
@@ -165,6 +171,14 @@ object SbtAtmos extends Plugin {
     inTask(run)(Seq(runner <<= atmosRunner)).head,
     run <<= Defaults.runTask(fullClasspath, mainClass in run, runner in run),
     runMain <<= Defaults.runMainTask(fullClasspath, runner in run)
+  )
+
+  def atmosLaunchSettings(): Seq[Setting[_]] = Seq(
+    mainClass in launch <<= mainClass in run,
+    outputStrategy in launch := Some(LoggedOutput(DevNullLogger)),
+    inTask(launch)(Seq(runner <<= atmosLauncher)).head,
+    launch <<= Defaults.runTask(fullClasspath, mainClass in launch, runner in launch),
+    launchMain <<= Defaults.runMainTask(fullClasspath, runner in launch)
   )
 
   def atmosUnscopedSettings: Seq[Setting[_]] = Seq(

@@ -11,8 +11,9 @@ import AtmosRun.AtmosInputs
 object AtmosController {
   private var global: Option[AtmosController] = None
   private var explicitlyStarted: Boolean = false
+  private var launchedRuns: Seq[Forked] = Seq.empty
 
-  def start(inputs: AtmosInputs, log: Logger, explicit: Boolean = false): Unit = {
+  def start(inputs: AtmosInputs, log: Logger, explicit: Boolean = false): Unit = synchronized {
     if (global.isEmpty) {
       val controller = new AtmosController(inputs)
       controller.start(log)
@@ -21,8 +22,14 @@ object AtmosController {
     }
   }
 
+  def launched(forked: Forked): Unit = synchronized {
+    launchedRuns :+= forked
+  }
+
   def stop(log: Logger, explicit: Boolean = false): Unit = synchronized {
     if (explicit || !explicitlyStarted) {
+      launchedRuns foreach (_.stop(log))
+      launchedRuns = Seq.empty
       global foreach (_.stop(log))
       global = None
     }
