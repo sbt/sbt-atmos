@@ -12,7 +12,7 @@ object SbtAtmos extends Plugin {
   import atmos.AtmosRun._
   import atmos.DevNullLogger
 
-  val AtmosVersion = "1.3.0-RC1"
+  val AtmosVersion = "1.3.0-RC2"
 
   val Atmos = config("atmos").extend(Compile)
   val AtmosTest = config("atmos-test").extend(Atmos, Test)
