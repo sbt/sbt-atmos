@@ -5,19 +5,13 @@ package com.typesafe.sbt
 
 import sbt._
 import sbt.Keys._
-import play.Project.{ ClassLoaderCreator, playVersion }
+import play.Project.playVersion
 
 object SbtAtmosPlay extends Plugin {
   import SbtAtmos._
   import atmos.AtmosPlayRun._
   import atmos.AtmosRun.AtmosTraceCompile
-
-  object AtmosPlayKeys {
-    val weavingClassLoader = TaskKey[ClassLoaderCreator]("weaving-class-loader")
-  }
-
   import AtmosKeys._
-  import AtmosPlayKeys._
 
   lazy val atmosPlaySettings: Seq[Setting[_]] = atmosCompileSettings ++ atmosPlayRunSettings ++ tracePlay
 

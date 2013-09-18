@@ -13,7 +13,6 @@ object AtmosPlayRun {
   import AtmosRun._
   import SbtAtmos.Atmos
   import SbtAtmos.AtmosKeys._
-  import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
   val Play21Version = "2.1.4"
   val Play22Version = "2.2.0-RC2"

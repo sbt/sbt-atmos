@@ -11,7 +11,7 @@ import play.Project.{ createPlayRunCommand, playReloaderClasspath, playReloaderC
 
 object AtmosPlaySpecific {
   import SbtAtmos.Atmos
-  import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
+  import SbtAtmos.AtmosKeys._
 
   def atmosPlaySpecificSettings(): Seq[Setting[_]] = Seq(
     playRunHooks in Atmos <<= playRunHooks,

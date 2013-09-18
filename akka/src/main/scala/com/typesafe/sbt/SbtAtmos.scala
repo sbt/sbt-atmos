@@ -80,6 +80,9 @@ object SbtAtmos extends Plugin {
 
     val launch = InputKey[Unit]("launch")
     val launchMain = InputKey[Unit]("launch-main")
+
+    // play keys
+    val weavingClassLoader = TaskKey[(String, Array[URL], ClassLoader) => ClassLoader]("weaving-class-loader")
   }
 
   import AtmosKeys._
