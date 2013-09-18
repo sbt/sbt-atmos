@@ -15,13 +15,23 @@ object AtmosPlayRun {
   import SbtAtmos.AtmosKeys._
   import SbtAtmosPlay.AtmosPlayKeys.weavingClassLoader
 
+  val Play21Version = "2.1.4"
+  val Play22Version = "2.2.0-RC2"
+
   def atmosPlayRunSettings(): Seq[Setting[_]] = Seq(
     weavingClassLoader in Atmos <<= (sigar in Atmos) map createWeavingClassLoader
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
-  def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = Seq(
-    "com.typesafe.atmos" % ("trace-play-" + playVersion) % atmosVersion % AtmosTraceCompile.name cross CrossVersion.Disabled
-  )
+  def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = {
+    val supportedPlayVersion = selectPlayVersion(playVersion)
+    Seq("com.typesafe.atmos" % ("trace-play-" + supportedPlayVersion) % atmosVersion % AtmosTraceCompile.name cross CrossVersion.Disabled)
+  }
+
+  def selectPlayVersion(playVersion: String): String = {
+    if      (playVersion startsWith "2.1.") Play21Version
+    else if (playVersion startsWith "2.2.") Play22Version
+    else    sys.error("Play version is not supported by Atmos: " + playVersion)
+  }
 
   def createWeavingClassLoader(sigar: Sigar): ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {
     val sigarLoader = SigarClassLoader(sigar)
