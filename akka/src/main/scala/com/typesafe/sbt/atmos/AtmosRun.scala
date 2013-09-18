@@ -80,7 +80,7 @@ object AtmosRun {
     if      (akkaVersion startsWith "2.0.") (Akka20Version, CrossVersion.Disabled)
     else if (akkaVersion startsWith "2.1.") (Akka21Version, CrossVersion.Disabled)
     else if (akkaVersion startsWith "2.2.") (Akka22Version, akka22CrossVersion(scalaVersion))
-    else    sys.error("Akka version is not supported by Atmos: " + akkaVersion)
+    else    sys.error("Akka version is not supported by Typesafe Console: " + akkaVersion)
   }
 
   def akka22CrossVersion(scalaVersion: String) = {
@@ -106,8 +106,8 @@ object AtmosRun {
     (classpathTypes, update, streams) map { (types, report, s) =>
       val classpath = Classpaths.managedJars(config, types, report)
       val tracedAkka = classpath count (_.metadata.get(Keys.moduleID.key).map(_.name).getOrElse("").startsWith("trace-akka-"))
-      if (tracedAkka < 1) s.log.warn("No trace dependencies for Atmos.")
-      if (tracedAkka > 1) s.log.warn("Multiple trace dependencies for Atmos.")
+      if (tracedAkka < 1) s.log.warn("No trace dependencies for Typesafe Console.")
+      if (tracedAkka > 1) s.log.warn("Multiple trace dependencies for Typesafe Console.")
       classpath
     }
 

@@ -30,7 +30,7 @@ object AtmosPlayRun {
   def selectPlayVersion(playVersion: String): String = {
     if      (playVersion startsWith "2.1.") Play21Version
     else if (playVersion startsWith "2.2.") Play22Version
-    else    sys.error("Play version is not supported by Atmos: " + playVersion)
+    else    sys.error("Play version is not supported by Typesafe Console: " + playVersion)
   }
 
   def createWeavingClassLoader(sigar: Sigar): ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {
