@@ -3,36 +3,29 @@ sbt-atmos
 
 [sbt] plugin for running [Typesafe Console][console] in development.
 
-A release candidate for the next version of Typesafe Console is available.
-This includes support for tracing Play applications. See the section below
-about the [Latest Typesafe Console](#latest-typesafe-console) for details.
+Supports tracing of [Akka projects](#akka-projects)
+and [Play projects](#play-projects).
 
 
-Add plugin
-----------
+## Akka projects
+
+### Add plugin
 
 This plugin requires sbt 0.12 or 0.13.
 
 Add the sbt-atmos plugin to `project/plugins.sbt`. For example:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.2.3")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0")
 ```
 
-Add the sbt-atmos settings to the project. For a `.sbt` build, add a line with:
+Add the `atmosSettings` to the project. For a `.sbt` build, add a line with:
 
 ```scala
 atmosSettings
 ```
 
-**Note:** *These settings need to come after the Akka library dependency
-settings, to have the appropriate trace dependencies automatically added based
-on the Akka version being used. Otherwise an extra setting will need to be
-added, specifying the Akka version to use. See the section on trace
-dependencies below.*
-
-For a full `.scala` build, add these settings to your project settings, after
-the Akka library dependencies:
+For a full `.scala` build, add these settings to your project settings.
 
 ```scala
 com.typesafe.sbt.SbtAtmos.atmosSettings
@@ -60,23 +53,22 @@ object SampleBuild extends Build {
 }
 ```
 
-A simple [sample Akka project][sample] configured with the sbt-atmos plugin is
-included in this repository.
+A simple [sample Akka project][akka-sample] configured with the sbt-atmos plugin
+is included in this repository.
 
 
-Trace dependencies
-------------------
+### Trace dependencies
 
 The sbt-atmos plugin will automatically add a library dependency which includes
-Aspectj aspects for the Akka dependency being used, providing the settings are
-added as described above.
+Aspectj aspects for the Akka dependency being used, providing Akka is listed as
+a library dependency of the project.
 
 To explicitly specify the trace dependency, use the `traceAkka` helper method
 and pass the Akka version being used. For example, add a setting like this to
 your build:
 
 ```scala
-traceAkka("2.2.0")
+traceAkka("2.2.1")
 ```
 
 The full path to this method is:
@@ -86,8 +78,7 @@ com.typesafe.sbt.SbtAtmos.traceAkka
 ```
 
 
-Run with Typesafe Console
--------------------------
+### Run with Typesafe Console
 
 To run your application with Typesafe Console there are extra versions of the
 `run` and `run-main` tasks. These use the same underlying settings for the
@@ -103,8 +94,7 @@ To run a specific main class:
     atmos:run-main org.something.MainClass
 
 
-Trace configuration
--------------------
+### Trace configuration
 
 It's possible to configure which actors in your application are traced, and at
 what sampling rates.
@@ -136,39 +126,32 @@ For applications with heavier loads you should select specific parts of the
 application to trace.*
 
 
-More Information
-----------------
+## Play projects
 
-For more information see the [documentation] for the developer version of
-Typesafe Console.
+### Add plugin
 
+Supported Play versions are `2.1.4` (with sbt `0.12`),
+and `2.2.0` (with sbt `0.13`).
 
-Latest Typesafe Console
------------------------
-
-A release candidate for the new Typesafe Console is available, with a
-corresponding release for sbt-atmos.
-
-To use with Akka applications, simply use as above with version `0.3.0-RC6`.
-
-For example, add the sbt-atmos plugin to `project/plugins.sbt`:
+Add the sbt-atmos-play plugin to `project/plugins.sbt`. For example:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0-RC6")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.0")
 ```
 
-### Play Applications
-
-Supported Play versions are `2.1.4` (with sbt 0.12),
-and `2.2.0` (with sbt 0.13).
-
-For Play applications add the following sbt plugin to `project/plugins.sbt`:
+Add the `atmosPlaySettings` to the project. For a `.sbt` build, add a line with:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.0-RC6")
+atmosPlaySettings
 ```
 
-And add the `atmosPlaySettings` to the Play project. For example:
+For a full `.scala` build, add these settings to your project settings.
+
+```scala
+com.typesafe.sbt.SbtAtmosPlay.atmosPlaySettings
+```
+
+For example:
 
 ```scala
 import sbt._
@@ -184,32 +167,46 @@ object ApplicationBuild extends Build {
 }
 ```
 
-For Play 2.1, there is an alternative run command, which also traces the
+A simple [sample Play project][play-sample] configured with the sbt-atmos-play
+plugin is included in this repository.
+
+
+### Run with Typesafe Console
+
+To run your Play application with Typesafe Console there is an alternative
+version of the `run` task. This uses the same underlying settings for the
+regular `run` task, and also adds the configuration needed to instrument your
+application, and start and stop Typesafe Console.
+
+For Play 2.2, there is an alternative run task, which also traces the
 application and starts Typesafe Console:
-
-```
-atmos-run
-```
-
-For Play 2.2, there is an alternative run task:
 
 ```
 atmos:run
 ```
 
+For Play 2.1, there is an alternative run command:
 
-Feedback
---------
+```
+atmos-run
+```
+
+
+## More information
+
+For more information see the [documentation] for the developer version of
+Typesafe Console.
+
+
+## Feedback
 
 We welcome your feedback and ideas for using Typesafe Console for development.
-There is a `Send Feedback` link available when running the Typesafe Console web
-interface, or you can go directly to [Typesafe Support][support].
 
-You can also use the [Typesafe Console mailing list][email].
+You can send feedback to the [Typesafe Console mailing list][email],
+or to [Typesafe Support][support],
 
 
-License
--------
+## License
 
 [Typesafe Console][console] is licensed under the [Typesafe Subscription Agreement][license]
 and is made available through the sbt-atmos plugin for development use only.
@@ -220,8 +217,7 @@ The code for the sbt-atmos plugin is open source software licensed under the
 For more information see [Typesafe licenses][licenses].
 
 
-Contribution policy
--------------------
+## Contribution policy
 
 Contributions via GitHub pull requests are gladly accepted from their original
 author. Before we can accept pull requests, you will need to agree to the
@@ -230,7 +226,8 @@ author. Before we can accept pull requests, you will need to agree to the
 
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
-[sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.2.3/sample/abc
+[akka-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.0/sample/abc
+[play-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.0/sample/play
 [forked]: http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
 [config]: https://github.com/typesafehub/config
 [documentation]: http://resources.typesafe.com/docs/console
