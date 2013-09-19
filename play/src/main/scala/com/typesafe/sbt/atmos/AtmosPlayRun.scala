@@ -21,15 +21,19 @@ object AtmosPlayRun {
     weavingClassLoader in Atmos <<= (sigar in Atmos) map createWeavingClassLoader
   ) ++ AtmosPlaySpecific.atmosPlaySpecificSettings
 
-  def tracePlayDependencies(playVersion: String, atmosVersion: String): Seq[ModuleID] = {
-    val supportedPlayVersion = selectPlayVersion(playVersion)
-    Seq("com.typesafe.atmos" % ("trace-play-" + supportedPlayVersion) % atmosVersion % AtmosTraceCompile.name cross CrossVersion.Disabled)
+  def tracePlayDependencies(dependencies: Seq[ModuleID], playVersion: String, atmosVersion: String): Seq[ModuleID] = {
+    if (containsTracePlay(dependencies)) Seq.empty[ModuleID]
+    else Seq("com.typesafe.atmos" % ("trace-play-" + playVersion) % atmosVersion % AtmosTraceCompile.name cross CrossVersion.Disabled)
   }
 
-  def selectPlayVersion(playVersion: String): String = {
+  def supportedPlayVersion(playVersion: String): String = {
     if      (playVersion startsWith "2.1.") Play21Version
     else if (playVersion startsWith "2.2.") Play22Version
     else    sys.error("Play version is not supported by Typesafe Console: " + playVersion)
+  }
+
+  def containsTracePlay(dependencies: Seq[ModuleID]): Boolean = dependencies exists { module =>
+    module.organization == "com.typesafe.atmos" && module.name.startsWith("trace-play")
   }
 
   def createWeavingClassLoader(sigar: Sigar): ClassLoaderCreator = (name, urls, parent) => new WeavingURLClassLoader(urls, parent) {

@@ -84,6 +84,7 @@ object SbtAtmos extends Plugin {
     val launchMain = InputKey[Unit]("launch-main")
 
     // play keys
+    val tracePlayVersion = TaskKey[String]("trace-play-version")
     val weavingClassLoader = TaskKey[(String, Array[URL], ClassLoader) => ClassLoader]("weaving-class-loader")
   }
 
