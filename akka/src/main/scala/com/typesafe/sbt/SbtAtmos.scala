@@ -66,6 +66,8 @@ object SbtAtmos extends Plugin {
     val sigarLibs = TaskKey[Option[File]]("sigar-libs")
     val sigar = TaskKey[Sigar]("sigar")
     val traceOptions = TaskKey[Seq[String]]("trace-options")
+    val traceAkkaVersion = TaskKey[Option[String]]("trace-akka-version")
+    val traceDependencies = TaskKey[Seq[ModuleID]]("trace-dependencies")
 
     val atmosOptions = TaskKey[AtmosOptions]("atmos-options")
     val consoleOptions = TaskKey[AtmosOptions]("console-options")
@@ -153,6 +155,9 @@ object SbtAtmos extends Plugin {
     sigar <<= (sigarDependency, sigarLibs) map Sigar,
     traceOptions <<= (aspectjWeaver, sigarLibs) map traceJavaOptions,
 
+    traceAkkaVersion <<= libraryDependencies map selectAkkaVersion,
+    traceDependencies <<= (libraryDependencies, traceAkkaVersion, atmosVersion, scalaVersion) map selectTraceDependencies,
+
     unmanagedClasspath <<= unmanagedClasspath in extendConfig,
     managedClasspath <<= collectTracedClasspath(classpathConfig),
     managedClasspath <<= Classpaths.concat(managedClasspath, traceConfigClasspath),
@@ -197,14 +202,7 @@ object SbtAtmos extends Plugin {
     libraryDependencies <++= (atmosVersion in Atmos, atmosUseProGuardedVersion in Atmos)(consoleDependencies),
     libraryDependencies <++= (aspectjVersion in Atmos)(weaveDependencies),
     libraryDependencies <++= (atmosVersion in Atmos)(sigarDependencies),
-    autoTraceAkkaDependencies
+
+    allDependencies <++= traceDependencies in Atmos
   )
-
-  def autoTraceAkkaDependencies = {
-    allDependencies <++= (libraryDependencies, atmosVersion in Atmos, scalaVersion) map selectTraceDependencies
-  }
-
-  def traceAkka(akkaVersion: String) = {
-    libraryDependencies <++= (atmosVersion in Atmos, scalaVersion)(traceDependencies(akkaVersion))
-  }
 }

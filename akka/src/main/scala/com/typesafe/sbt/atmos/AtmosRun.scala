@@ -54,10 +54,21 @@ object AtmosRun {
     else "com.typesafe.console" % "typesafe-console" % version % AtmosConsole.name
   )
 
-  def selectTraceDependencies(dependencies: Seq[ModuleID], atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
+  def selectAkkaVersion(dependencies: Seq[ModuleID]): Option[String] = {
+    findAkkaVersion(dependencies) map supportedAkkaVersion
+  }
+
+  def supportedAkkaVersion(akkaVersion: String): String = {
+    if      (akkaVersion startsWith "2.0.") Akka20Version
+    else if (akkaVersion startsWith "2.1.") Akka21Version
+    else if (akkaVersion startsWith "2.2.") Akka22Version
+    else    sys.error("Akka version is not supported by Typesafe Console: " + akkaVersion)
+  }
+
+  def selectTraceDependencies(dependencies: Seq[ModuleID], traceAkkaVersion: Option[String], atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
     if (containsTrace(dependencies)) Seq.empty[ModuleID]
-    else findAkkaVersion(dependencies) match {
-      case Some(akkaVersion) => traceDependencies(akkaVersion)(atmosVersion, scalaVersion)
+    else traceAkkaVersion match {
+      case Some(akkaVersion) => traceAkkaDependencies(akkaVersion, atmosVersion, scalaVersion)
       case None              => Seq.empty[ModuleID]
     }
   }
@@ -71,25 +82,17 @@ object AtmosRun {
   } map (_.revision)
 
 
-  def traceDependencies(akkaVersion: String)(atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
-    val (supportedAkkaVersion, crossVersion) = selectAkkaVersion(akkaVersion, scalaVersion)
-    traceAkkaDependencies(supportedAkkaVersion, atmosVersion, crossVersion)
+  def traceAkkaDependencies(akkaVersion: String, atmosVersion: String, scalaVersion: String): Seq[ModuleID] = {
+    val crossVersion = akkaCrossVersion(akkaVersion, scalaVersion)
+    Seq("com.typesafe.atmos" % ("trace-akka-" + akkaVersion) % atmosVersion % AtmosTraceCompile.name cross crossVersion)
   }
 
-  def selectAkkaVersion(akkaVersion: String, scalaVersion: String): (String, CrossVersion) = {
-    if      (akkaVersion startsWith "2.0.") (Akka20Version, CrossVersion.Disabled)
-    else if (akkaVersion startsWith "2.1.") (Akka21Version, CrossVersion.Disabled)
-    else if (akkaVersion startsWith "2.2.") (Akka22Version, akka22CrossVersion(scalaVersion))
-    else    sys.error("Akka version is not supported by Typesafe Console: " + akkaVersion)
+  def akkaCrossVersion(akkaVersion: String, scalaVersion: String): CrossVersion = {
+    if      (akkaVersion startsWith "2.0.") CrossVersion.Disabled
+    else if (akkaVersion startsWith "2.1.") CrossVersion.Disabled
+    else if (scalaVersion contains "-")     CrossVersion.full
+    else                                    CrossVersion.binary
   }
-
-  def akka22CrossVersion(scalaVersion: String) = {
-    if (scalaVersion startsWith "2.11.0-") CrossVersion.full else CrossVersion.binary
-  }
-
-  def traceAkkaDependencies(akkaVersion: String, atmosVersion: String, crossVersion: CrossVersion) = Seq(
-    "com.typesafe.atmos" % ("trace-akka-" + akkaVersion) % atmosVersion % AtmosTraceCompile.name cross crossVersion
-  )
 
   def weaveDependencies(version: String) = Seq(
     "org.aspectj" % "aspectjweaver" % version % AtmosWeave.name
