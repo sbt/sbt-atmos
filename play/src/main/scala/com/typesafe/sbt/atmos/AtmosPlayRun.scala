@@ -15,7 +15,7 @@ object AtmosPlayRun {
   import SbtAtmos.AtmosKeys._
 
   val Play21Version = "2.1.4"
-  val Play22Version = "2.2.0-RC2"
+  val Play22Version = "2.2.0"
 
   def atmosPlayRunSettings(): Seq[Setting[_]] = Seq(
     weavingClassLoader in Atmos <<= (sigar in Atmos) map createWeavingClassLoader

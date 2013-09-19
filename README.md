@@ -160,7 +160,7 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.0-RC6")
 ### Play Applications
 
 Supported Play versions are `2.1.4` (with sbt 0.12),
-and `2.2.0-RC2` (with sbt 0.13).
+and `2.2.0` (with sbt 0.13).
 
 For Play applications add the following sbt plugin to `project/plugins.sbt`:
 

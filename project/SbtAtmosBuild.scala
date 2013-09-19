@@ -59,7 +59,7 @@ object SbtAtmosBuild extends Build {
       libraryDependencies <+= (sbtVersion in sbtPlugin, scalaBinaryVersion in update) { (sbtV, scalaV) =>
         val dependency = sbtV match {
           case "0.12" => "play" % "sbt-plugin" % "2.1.4"
-          case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2.0-RC2"
+          case "0.13" => "com.typesafe.play" % "sbt-plugin" % "2.2.0"
           case _ => sys.error("Unsupported sbt version: " + sbtV)
         }
         Defaults.sbtPluginExtra(dependency, sbtV, scalaV)
