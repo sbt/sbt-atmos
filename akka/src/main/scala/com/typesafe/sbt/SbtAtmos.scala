@@ -206,4 +206,8 @@ object SbtAtmos extends Plugin {
 
     allDependencies <++= traceDependencies in Atmos
   )
+
+  def traceAkka(akkaVersion: String) = {
+    traceAkkaVersion in Atmos := Option(akkaVersion) map supportedAkkaVersion
+  }
 }
