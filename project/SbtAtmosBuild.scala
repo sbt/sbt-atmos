@@ -50,7 +50,7 @@ object SbtAtmosBuild extends Build {
   )
 
   object Dependency {
-    val aspectjTools = "org.aspectj" % "aspectjtools" % "1.7.2"
+    val aspectjTools = "org.aspectj" % "aspectjtools" % "1.7.3"
 
     def playPlugin: Seq[Setting[_]] = Seq(
       resolvers += Classpaths.typesafeSnapshots,

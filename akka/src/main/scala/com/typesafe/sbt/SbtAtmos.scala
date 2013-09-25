@@ -106,7 +106,7 @@ object SbtAtmos extends Plugin {
   def atmosDefaultSettings(extendConfig: Configuration, classpathConfig: Configuration): Seq[Setting[_]] = Seq(
     atmosVersion := AtmosVersion,
     atmosUseProGuardedVersion := true,
-    aspectjVersion := "1.7.2",
+    aspectjVersion := "1.7.3",
 
     atmosDirectory <<= target / targetName(extendConfig),
 
