@@ -167,7 +167,10 @@ object AtmosRun {
       |    sampling {
       |%s
       |    }
-      |    send.port = %s
+      |    send {
+      |      port = %s
+      |      retry = off
+      |    }
       |  }
       |}
     """.trim.stripMargin.format(StringUtilities.normalize(node), traceable, sampling, tracePort)
