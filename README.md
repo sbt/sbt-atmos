@@ -16,7 +16,7 @@ This plugin requires sbt 0.12 or 0.13.
 Add the sbt-atmos plugin to `project/plugins.sbt`. For example:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos" % "0.3.2")
 ```
 
 Add the `atmosSettings` to the project. For a `.sbt` build, add a line with:
@@ -136,7 +136,7 @@ and `2.2.0` (with sbt `0.13`).
 Add the sbt-atmos-play plugin to `project/plugins.sbt`. For example:
 
 ```scala
-addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-atmos-play" % "0.3.2")
 ```
 
 Add the `atmosPlaySettings` to the project. For a `.sbt` build, add a line with:
@@ -226,8 +226,8 @@ author. Before we can accept pull requests, you will need to agree to the
 
 [sbt]: https://github.com/sbt/sbt
 [console]: http://typesafe.com/platform/runtime/console
-[akka-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.1/sample/abc
-[play-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.1/sample/play
+[akka-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.2/sample/abc
+[play-sample]: https://github.com/typesafehub/sbt-atmos/tree/v0.3.2/sample/play
 [forked]: http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
 [config]: https://github.com/typesafehub/config
 [documentation]: http://resources.typesafe.com/docs/console
