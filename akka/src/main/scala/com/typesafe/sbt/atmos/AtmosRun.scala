@@ -224,9 +224,10 @@ object AtmosRun {
 
   def writeTraceConfig(name: String, configKey: TaskKey[String], includesKey: TaskKey[String]): Initialize[Task[File]] =
     (atmosConfigDirectory, configKey, includesKey) map { (confDir, conf, includes) =>
+      val configResource = sys.props.getOrElse("config.resource", "application.conf")
       writeConfigFiles(confDir, name, Seq(
         "atmos.conf" -> conf,
-        "application.conf" -> includes
+        configResource -> includes
       ))
     }
 
