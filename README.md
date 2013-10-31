@@ -126,6 +126,28 @@ For applications with heavier loads you should select specific parts of the
 application to trace.*
 
 
+### Configuration subsections
+
+Actor systems are configured for tracing based on the same configuration
+passed on actor system creation. This allows applications with multiple actor
+systems to have different trace configuration for each system, just like akka
+configuration. The sbt-atmos plugin will automatically add trace settings for
+the top-level configuration. If your application creates actor systems using
+configuration subsections, like
+
+```scala
+val config = ConfigFactory.load()
+val system = ActorSystem("name", config.getConfig("subsection"))
+```
+
+then these configuration subsections need to be marked for tracing too. This
+can be done with the `includeConfig` setting. For example:
+
+```scala
+AtmosKeys.includeConfig in Atmos += "subsection"
+```
+
+
 ## Play projects
 
 ### Add plugin
