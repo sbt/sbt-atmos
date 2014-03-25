@@ -16,8 +16,8 @@ object AtmosRun {
   import SbtAtmos.AtmosKeys._
 
   val Akka20Version = "2.0.5"
-  val Akka21Version = "2.1.4"
-  val Akka22Version = "2.2.1"
+  val Akka21Version = "2.1.5"
+  val Akka22Version = "2.2.4"
 
   val AtmosTraceCompile = config("atmos-trace-compile").extend(Configurations.RuntimeInternal).hide
   val AtmosTraceTest    = config("atmos-trace-test").extend(AtmosTraceCompile, Configurations.TestInternal).hide
